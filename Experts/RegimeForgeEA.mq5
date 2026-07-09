@@ -1,4 +1,4 @@
-#property copyright "RegimeForgeEA contributors"
+#property copyright "Berry Wahlberg"
 #property version   "1.00"
 #property strict
 #property description "Regime-aware, risk-sized multi-strategy Expert Advisor"
