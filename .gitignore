@@ -1,0 +1,9 @@
+*.ex5
+*.log
+*.set
+Tester/
+Logs/
+MQL5/Profiles/
+outputs/
+__pycache__/
+*.pyc
