@@ -1,5 +1,10 @@
 # RegimeForgeEA
 
+[![Python tests](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml/badge.svg)](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![MQL5](https://img.shields.io/badge/Execution-MQL5-167AC6)
+![Research status](https://img.shields.io/badge/M5%20candidate-Proxy%20validated-0A8F72)
+
 RegimeForgeEA is a modular, regime-aware algorithmic trading framework with an
 MQL5 Expert Advisor and a Python research backtester. It is instrument-agnostic:
 the first included strategy is an XAUUSD M5 trend-breakout research candidate,
@@ -11,6 +16,25 @@ Chinese documentation: [README_zh-CN.md](README_zh-CN.md)
 > This software is for research and educational use. Trading involves
 > substantial risk. Validate symbol specifications, costs, and strategy
 > behavior before enabling live trading.
+
+## Current research candidate: M5 volume-confirmed reversal
+
+The current research candidate is a long-only M5 reversal rule. It passed the
+fixed training, validation, and holdout protocol on a public gold-linked proxy;
+it still requires broker-native XAUUSD Bid/Ask testing before any deployment.
+
+$$r_3(t)=\frac{C_t}{C_{t-3}}-1$$
+
+$$q_{20}(t)=Q_{0.20}(\{r_3(s):s<t\}),\qquad VR(t)=\frac{V_t}{SMA_{60}(V)_t}$$
+
+Enter long at the next M5 open when:
+
+$$r_3(t)\le q_{20}(t)\quad\land\quad VR(t)\ge1.5$$
+
+Exit after 24 M5 bars (120 minutes). The threshold uses the prior 5,760 M5
+bars and is shifted one bar to avoid look-ahead. See the
+[full Markdown report](reports/M5_Volume_Reversal_Research_Report.md) and
+[PDF report](reports/M5_Volume_Reversal_Research_Report.pdf).
 
 ## Features
 
@@ -30,11 +54,10 @@ high-volatility regimes remain inactive in the EA.
 
 ## Research status
 
-Two independent strategy families were tested using pre-defined candidates and
-time splits: 2021–2023 training, 2024 validation, and 2025 final holdout.
-Neither family produced a candidate eligible for validation; therefore no
-candidate was evaluated on the final holdout and no profitable default is
-claimed.
+Multiple pre-defined strategy families were tested with 2021–2023 training,
+2024 validation, and a 2025 final holdout. Most candidates were rejected. One
+M5 volume-confirmed reversal candidate passed all three splits on the public
+PAXGUSDT proxy; it is not a live-profit claim and is not enabled by default.
 
 - [Trend candidate research](reports/Trend_Candidate_Research.md): eight
   M15/M30/H1 EMA/ADX/Donchian candidates; all failed training gates.

@@ -1,5 +1,10 @@
 # RegimeForgeEA
 
+[![Python tests](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml/badge.svg)](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![MQL5](https://img.shields.io/badge/Execution-MQL5-167AC6)
+![研究状态](https://img.shields.io/badge/M5%20candidate-代理数据验证通过-0A8F72)
+
 RegimeForgeEA 是一个模块化、按行情状态切换策略的自动交易框架，包含 MQL5 EA
 和 Python 研究回测器。项目不绑定任何交易品种：当前附带的第一套策略是 XAUUSD
 M5 趋势突破研究候选，但执行和风险架构本身与黄金无关。
@@ -7,6 +12,23 @@ M5 趋势突破研究候选，但执行和风险架构本身与黄金无关。
 > [!WARNING]
 > 本软件仅用于研究与教育。交易具有重大风险。启用真实交易前，必须验证品种合约、
 > 交易成本及策略行为。
+
+## 当前研究候选：M5 成交量确认反转
+
+当前候选是仅做多的 M5 反转规则。它在公开黄金挂钩代理数据的固定训练、验证和留出
+流程中通过，但在任何部署前仍需经纪商原生 XAUUSD Bid/Ask 测试。
+
+$$r_3(t)=\frac{C_t}{C_{t-3}}-1$$
+
+$$q_{20}(t)=Q_{0.20}(\{r_3(s):s<t\}),\qquad VR(t)=\frac{V_t}{SMA_{60}(V)_t}$$
+
+当以下条件成立时，于下一根 M5 开盘做多：
+
+$$r_3(t)\le q_{20}(t)\quad\land\quad VR(t)\ge1.5$$
+
+持有 24 根 M5（120 分钟）后平仓。阈值使用此前 5,760 根 M5，并向后移一根以避免
+未来函数。详见[完整 Markdown 报告](reports/M5_Volume_Reversal_Research_Report.md)
+和 [PDF 报告](reports/M5_Volume_Reversal_Research_Report.pdf)。
 
 ## 功能
 
@@ -24,9 +46,9 @@ M5 趋势突破研究候选，但执行和风险架构本身与黄金无关。
 
 ## 研究状态
 
-已使用预先固定的候选和时间切分测试两类独立策略：2021–2023 训练、2024 验证、
-2025 最终留出。两类候选均未达到验证资格，因此不会查看最终留出集，更不会声称
-存在盈利默认策略。
+已使用预先固定的候选与时间切分进行测试：2021–2023 训练、2024 验证、2025 最终
+留出。大多数候选已淘汰；一个 M5 成交量确认反转候选在公开 PAXGUSDT 代理的三段
+样本中通过，但这不代表实盘盈利，且默认不会启用。
 
 - [趋势候选研究](reports/Trend_Candidate_Research.md)：8 个 M15/M30/H1
   EMA/ADX/Donchian 候选，均未通过训练门槛。
