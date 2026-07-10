@@ -44,8 +44,22 @@ class Config:
             raise ValueError("initial_equity must be positive")
         if not 0 < self.risk_percent <= 10:
             raise ValueError("risk_percent must be in (0, 10]")
+        if not 0 < self.max_daily_loss_percent <= 100:
+            raise ValueError("max_daily_loss_percent must be in (0, 100]")
+        if not 0 < self.max_drawdown_percent <= 100:
+            raise ValueError("max_drawdown_percent must be in (0, 100]")
+        if self.max_spread_points < 0 or self.default_spread_points < 0:
+            raise ValueError("spread parameters must be non-negative")
         if self.fast_ma_period >= self.slow_ma_period:
             raise ValueError("fast_ma_period must be below slow_ma_period")
+        if min(
+            self.fast_ma_period,
+            self.slow_ma_period,
+            self.atr_period,
+            self.adx_period,
+            self.breakout_bars,
+        ) <= 0:
+            raise ValueError("indicator and breakout periods must be positive")
         positive = (
             self.point,
             self.contract_size,
@@ -55,9 +69,12 @@ class Config:
             self.stop_atr,
             self.take_profit_atr,
             self.trailing_atr,
+            self.high_volatility_atr_ratio,
         )
         if any(value <= 0 for value in positive):
             raise ValueError("price, volume, and ATR parameters must be positive")
+        if self.volume_max < self.volume_min:
+            raise ValueError("volume_max must be at least volume_min")
 
 
 @dataclass
@@ -110,6 +127,12 @@ def load_bars(path: Path, default_spread_points: float) -> pd.DataFrame:
         raise ValueError("Invalid OHLC row: high is below another price")
     if (frame["low"] > frame[["open", "close", "high"]].min(axis=1)).any():
         raise ValueError("Invalid OHLC row: low is above another price")
+    if not np.isfinite(frame[["open", "high", "low", "close", "spread"]].to_numpy()).all():
+        raise ValueError("OHLC and spread values must be finite")
+    if (frame[["open", "high", "low", "close"]] <= 0).any(axis=None):
+        raise ValueError("OHLC values must be positive")
+    if (frame["spread"] < 0).any():
+        raise ValueError("spread values must be non-negative")
     return frame
 
 
@@ -405,7 +428,8 @@ def run_backtest(frame: pd.DataFrame, config: Config) -> tuple[dict, pd.DataFram
             pending_signal = signal_for_bar(row, config)
             pending_atr = float(row["atr"])
 
-    if position is not None:
+    forced_final_close = position is not None
+    if forced_final_close:
         timestamp = bars.index[-1]
         row = bars.iloc[-1]
         spread_price = float(row["spread"]) * config.point
@@ -415,6 +439,16 @@ def run_backtest(frame: pd.DataFrame, config: Config) -> tuple[dict, pd.DataFram
 
     trades_frame = pd.DataFrame(trades)
     equity_frame = pd.DataFrame(equity_rows)
+    if forced_final_close:
+        final_peak = max(peak_equity, cash)
+        equity_frame.loc[equity_frame.index[-1], ["cash", "equity", "position"]] = [
+            cash,
+            cash,
+            0,
+        ]
+        equity_frame.loc[equity_frame.index[-1], "drawdown"] = (
+            cash / final_peak - 1.0
+        )
     final_equity = cash
     net_profit = final_equity - config.initial_equity
     max_drawdown = (
@@ -439,7 +473,7 @@ def run_backtest(frame: pd.DataFrame, config: Config) -> tuple[dict, pd.DataFram
         "final_equity": final_equity,
         "net_profit": net_profit,
         "total_return_percent": 100.0 * net_profit / config.initial_equity,
-        "max_drawdown_percent": 100.0 * max_drawdown,
+        "max_drawdown_percent": -100.0 * max_drawdown,
         "trades": len(trades_frame),
         "win_rate_percent": 100.0 * wins / len(trades_frame) if len(trades_frame) else 0.0,
         "profit_factor": gross_profit / gross_loss if gross_loss > 0 else None,
@@ -454,10 +488,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, default=Path("outputs/latest"))
     parser.add_argument("--initial-equity", type=float, default=10_000.0)
     parser.add_argument("--risk-percent", type=float, default=1.0)
+    parser.add_argument("--max-daily-loss-percent", type=float, default=4.0)
+    parser.add_argument("--max-drawdown-percent", type=float, default=12.0)
     parser.add_argument("--spread-points", type=float, default=35.0)
     parser.add_argument("--max-spread-points", type=float, default=80.0)
     parser.add_argument("--point", type=float, default=0.01)
     parser.add_argument("--contract-size", type=float, default=100.0)
+    parser.add_argument("--volume-min", type=float, default=0.01)
+    parser.add_argument("--volume-max", type=float, default=100.0)
+    parser.add_argument("--volume-step", type=float, default=0.01)
     parser.add_argument("--commission", type=float, default=0.0)
     return parser
 
@@ -467,10 +506,15 @@ def main() -> None:
     config = Config(
         initial_equity=args.initial_equity,
         risk_percent=args.risk_percent,
+        max_daily_loss_percent=args.max_daily_loss_percent,
+        max_drawdown_percent=args.max_drawdown_percent,
         default_spread_points=args.spread_points,
         max_spread_points=args.max_spread_points,
         point=args.point,
         contract_size=args.contract_size,
+        volume_min=args.volume_min,
+        volume_max=args.volume_max,
+        volume_step=args.volume_step,
         commission_per_lot_round_turn=args.commission,
     )
     bars = load_bars(args.csv, config.default_spread_points)

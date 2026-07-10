@@ -43,6 +43,7 @@ class BacktestTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertTrue(math_is_finite(first["final_equity"]))
         self.assertEqual(len(equity), len(bars))
+        self.assertAlmostEqual(first["final_equity"], float(equity["equity"].iloc[-1]))
         self.assertGreater(len(trades), 0)
         self.assertTrue(np.isfinite(trades["net_pnl"]).all())
 
@@ -50,6 +51,12 @@ class BacktestTests(unittest.TestCase):
         config = BACKTEST.Config(volume_step=0.01, volume_min=0.01)
         self.assertEqual(BACKTEST.normalize_volume(0.019, config), 0.01)
         self.assertEqual(BACKTEST.normalize_volume(0.009, config), 0.0)
+
+    def test_invalid_risk_limits_are_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            BACKTEST.Config(max_drawdown_percent=0).validate()
+        with self.assertRaises(ValueError):
+            BACKTEST.Config(volume_max=0.001, volume_min=0.01).validate()
 
 
 def math_is_finite(value: float) -> bool:

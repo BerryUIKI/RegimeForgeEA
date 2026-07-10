@@ -142,6 +142,17 @@ bool HasManagedPosition()
    return false;
   }
 
+bool HasUnmanagedNettingPosition()
+  {
+   const ENUM_ACCOUNT_MARGIN_MODE margin_mode=
+      (ENUM_ACCOUNT_MARGIN_MODE)AccountInfoInteger(ACCOUNT_MARGIN_MODE);
+   if(margin_mode==ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
+      return false;
+   if(!PositionSelect(_Symbol))
+      return false;
+   return (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagicNumber;
+  }
+
 bool SpreadAllowed()
   {
    MqlTick tick;
@@ -227,6 +238,11 @@ void TryOpenPosition(const TradeSignal &signal)
   {
    if(signal.direction==SIGNAL_NONE || HasManagedPosition() || !SpreadAllowed())
       return;
+   if(HasUnmanagedNettingPosition())
+     {
+      Print("Entry blocked: unmanaged netting position exists on ",_Symbol);
+      return;
+     }
    if((signal.direction==SIGNAL_BUY && !InpAllowLong) ||
       (signal.direction==SIGNAL_SELL && !InpAllowShort))
       return;
@@ -273,7 +289,13 @@ int OnInit()
   {
    if(InpRiskPerTradePct<=0.0 || InpRiskPerTradePct>10.0 ||
       InpMaxDailyLossPct<=0.0 || InpMaxDrawdownPct<=0.0 ||
-      InpFastMAPeriod>=InpSlowMAPeriod)
+      InpMaxDailyLossPct>100.0 || InpMaxDrawdownPct>100.0 ||
+      InpMaxSpreadPoints<0 || InpSlippagePoints<0 ||
+      InpFastMAPeriod<=0 || InpSlowMAPeriod<=0 ||
+      InpATRPeriod<=0 || InpADXPeriod<=0 || InpBreakoutBars<5 ||
+      InpFastMAPeriod>=InpSlowMAPeriod ||
+      InpADXTrendLevel<=0.0 || InpHighVolatilityATRRatio<=0.0 ||
+      InpStopATR<=0.0 || InpTakeProfitATR<=0.0 || InpTrailingATR<=0.0)
      {
       Print("Invalid EA inputs");
       return INIT_PARAMETERS_INCORRECT;

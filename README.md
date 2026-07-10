@@ -25,6 +25,29 @@ Chinese documentation: [README_zh-CN.md](README_zh-CN.md)
 The current EA opens trades only in the trend regime. Range and high-volatility
 regimes remain inactive until dedicated strategy modules are added.
 
+## Latest public-data backtest
+
+The unoptimized default strategy was tested on 375,413 weekday-only
+`PAXGUSDT` M5 bars from 2021–2025. Monthly Binance Data Vision archives were
+verified against publisher-provided SHA-256 checksums.
+
+| Metric | Risk-managed run | Continuous diagnostic |
+|---|---:|---:|
+| Total return | -11.55% | -98.87% |
+| Maximum drawdown | 12.35% | 98.90% |
+| Trades | 44 | 2,054 |
+| Win rate | 22.73% | 24.49% |
+| Profit factor | 0.47 | 0.28 |
+
+The risk-managed run stopped opening positions on January 11, 2021 after its
+peak-drawdown lock fired. The continuous diagnostic shows that the underlying
+strategy is not viable with the current defaults. PAXGUSDT is a gold-linked
+public proxy, not an XAUUSD broker feed; these results must not be presented as
+live-trading validation.
+
+Read the [full report](reports/PAXGUSDT_2021_2025.md) and inspect the
+[data manifest](reports/PAXGUSDT_2021_2025_data_manifest.json).
+
 ## MQL5 layout
 
 ```text
@@ -88,6 +111,11 @@ both stop loss and take profit is resolved stop-first. Trailing stops are
 updated at bar close. Tick-level MT5 Strategy Tester results will therefore
 not be identical.
 
+To reproduce the public-data benchmark, use the commands in the
+[backtest report](reports/PAXGUSDT_2021_2025.md). Raw market data and generated
+run outputs are intentionally excluded from Git; the downloader rebuilds them
+from verified public archives.
+
 ## Main parameters
 
 - `InpRiskPerTradePct`: equity risk per trade; default `1.00%`
@@ -121,7 +149,10 @@ Planned strategy families:
 python -m unittest discover -s tests -v
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for strategy, data, and validation
+requirements. Report vulnerabilities through the process in
+[SECURITY.md](SECURITY.md), not a public issue.
+
 ## License
 
 [MIT](LICENSE)
-
