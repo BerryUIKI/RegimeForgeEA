@@ -40,6 +40,13 @@ claimed.
   M15/M30/H1 EMA/ADX/Donchian candidates; all failed training gates.
 - [Range candidate research](reports/Range_Candidate_Research.md): eight
   M15/M30/H1 Bollinger/RSI range candidates; all failed training gates.
+- [High-frequency candidate research](reports/High_Frequency_Candidate_Research.md):
+  M5 pullback candidates with a closed H1/H4 trend filter; all failed at the
+  order level.
+- [Intraday factor screen](reports/Intraday_Factor_Screen.md): cost-adjusted
+  M5 factor screen; order-level conversion of the initial reversal rule failed.
+- [Volume-reversal order research](reports/Volume_Reversal_Candidate_Research.md):
+  fixed-time M5 exits and ATR stops; all candidates failed training gates.
 
 The Python range model is research-only and is not yet implemented in MQL5.
 Broker-native XAUUSD bid/ask data, walk-forward validation, and demo forward

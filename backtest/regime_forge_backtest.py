@@ -15,6 +15,15 @@ import pandas as pd
 @dataclass(frozen=True)
 class Config:
     strategy: str = "trend_breakout"
+    higher_timeframe: str | None = None
+    higher_fast_ma_period: int = 20
+    higher_slow_ma_period: int = 50
+    reversal_lookback_bars: int = 3
+    reversal_quantile_window: int = 20 * 24 * 12
+    reversal_quantile: float = 0.2
+    reversal_volume_ratio: float = 1.5
+    reversal_require_cross: bool = False
+    time_exit_bars: int = 0
     initial_equity: float = 10_000.0
     risk_percent: float = 1.0
     max_daily_loss_percent: float = 4.0
@@ -58,8 +67,8 @@ class Config:
             raise ValueError("spread parameters must be non-negative")
         if self.fast_ma_period >= self.slow_ma_period:
             raise ValueError("fast_ma_period must be below slow_ma_period")
-        if self.strategy not in {"trend_breakout", "range_mean_reversion"}:
-            raise ValueError("strategy must be trend_breakout or range_mean_reversion")
+        if self.strategy not in {"trend_breakout", "range_mean_reversion", "trend_pullback", "volume_reversal"}:
+            raise ValueError("unsupported strategy")
         if min(
             self.fast_ma_period,
             self.slow_ma_period,
@@ -68,6 +77,10 @@ class Config:
             self.breakout_bars,
             self.bollinger_period,
             self.rsi_period,
+            self.higher_fast_ma_period,
+            self.higher_slow_ma_period,
+            self.reversal_lookback_bars,
+            self.reversal_quantile_window,
         ) <= 0:
             raise ValueError("indicator and breakout periods must be positive")
         positive = (
@@ -76,19 +89,31 @@ class Config:
             self.volume_min,
             self.volume_max,
             self.volume_step,
-            self.stop_atr,
-            self.take_profit_atr,
             self.trailing_atr,
             self.high_volatility_atr_ratio,
         )
         if any(value <= 0 for value in positive):
-            raise ValueError("price, volume, and ATR parameters must be positive")
+            raise ValueError("price, volume, and trailing parameters must be positive")
         if self.volume_max < self.volume_min:
             raise ValueError("volume_max must be at least volume_min")
         if self.bollinger_deviation <= 0:
             raise ValueError("bollinger_deviation must be positive")
         if not 0 < self.rsi_lower < self.rsi_upper < 100:
             raise ValueError("RSI thresholds must satisfy 0 < lower < upper < 100")
+        if not 0 < self.reversal_quantile < 0.5:
+            raise ValueError("reversal_quantile must be in (0, 0.5)")
+        if self.reversal_volume_ratio <= 0 or self.time_exit_bars < 0:
+            raise ValueError("reversal volume and time-exit parameters are invalid")
+        if self.stop_atr <= 0:
+            raise ValueError("stop_atr must be positive")
+        if self.take_profit_atr < 0:
+            raise ValueError("take_profit_atr must be non-negative")
+        if self.strategy != "volume_reversal" and self.take_profit_atr <= 0:
+            raise ValueError("take_profit_atr must be positive for non-time-exit strategies")
+        if self.strategy == "trend_pullback" and not self.higher_timeframe:
+            raise ValueError("trend_pullback requires higher_timeframe")
+        if self.higher_fast_ma_period >= self.higher_slow_ma_period:
+            raise ValueError("higher_fast_ma_period must be below higher_slow_ma_period")
 
 
 @dataclass
@@ -100,6 +125,7 @@ class Position:
     take_profit: float
     volume: float
     initial_risk: float
+    entry_bar: int
 
 
 def load_bars(path: Path, default_spread_points: float) -> pd.DataFrame:
@@ -252,6 +278,26 @@ def add_indicators(frame: pd.DataFrame, config: Config) -> pd.DataFrame:
     average_loss = wilder_average((-delta.clip(upper=0.0)).fillna(0.0), config.rsi_period)
     relative_strength = average_gain / average_loss.replace(0.0, np.nan)
     result["rsi"] = 100.0 - 100.0 / (1.0 + relative_strength)
+    volume_column = next(
+        (column for column in ("volume", "tick_volume", "real_volume") if column in result.columns),
+        None,
+    )
+    if volume_column:
+        result["reversal_volume_ratio"] = (
+            result[volume_column] / result[volume_column].rolling(60).mean()
+        )
+    else:
+        result["reversal_volume_ratio"] = np.nan
+    result["reversal_return"] = result["close"].pct_change(config.reversal_lookback_bars)
+    result["reversal_lower"] = result["reversal_return"].shift(1).rolling(
+        config.reversal_quantile_window
+    ).quantile(config.reversal_quantile)
+    result["reversal_upper"] = result["reversal_return"].shift(1).rolling(
+        config.reversal_quantile_window
+    ).quantile(1.0 - config.reversal_quantile)
+    result["previous_reversal_return"] = result["reversal_return"].shift(1)
+    result["previous_reversal_lower"] = result["reversal_lower"].shift(1)
+    result["previous_reversal_upper"] = result["reversal_upper"].shift(1)
     result["regime"] = "unknown"
     ready = result[["fast_ma", "slow_ma", "atr", "atr_slow", "adx"]].notna().all(axis=1)
     high_volatility = ready & (
@@ -261,6 +307,12 @@ def add_indicators(frame: pd.DataFrame, config: Config) -> pd.DataFrame:
     result.loc[ready & ~high_volatility & ~trend, "regime"] = "range"
     result.loc[trend, "regime"] = "trend"
     result.loc[high_volatility, "regime"] = "high_volatility"
+    if config.higher_timeframe:
+        higher_bars = resample_bars(frame, config.higher_timeframe)
+        higher_fast = ema(higher_bars["close"], config.higher_fast_ma_period).shift(1)
+        higher_slow = ema(higher_bars["close"], config.higher_slow_ma_period).shift(1)
+        result["higher_fast_ma"] = higher_fast.reindex(result.index, method="ffill")
+        result["higher_slow_ma"] = higher_slow.reindex(result.index, method="ffill")
     return result
 
 
@@ -288,6 +340,46 @@ def signal_for_bar(row: pd.Series, config: Config) -> int:
         if config.allow_long and row["close"] < row["bollinger_lower"] and row["rsi"] <= config.rsi_lower:
             return 1
         if config.allow_short and row["close"] > row["bollinger_upper"] and row["rsi"] >= config.rsi_upper:
+            return -1
+    if config.strategy == "trend_pullback":
+        if pd.isna(row["higher_fast_ma"]) or pd.isna(row["higher_slow_ma"]):
+            return 0
+        if (
+            config.allow_long
+            and row["higher_fast_ma"] > row["higher_slow_ma"]
+            and row["close"] < row["bollinger_lower"]
+            and row["rsi"] <= config.rsi_lower
+        ):
+            return 1
+        if (
+            config.allow_short
+            and row["higher_fast_ma"] < row["higher_slow_ma"]
+            and row["close"] > row["bollinger_upper"]
+            and row["rsi"] >= config.rsi_upper
+        ):
+            return -1
+    if config.strategy == "volume_reversal":
+        crosses_lower = (
+            not config.reversal_require_cross
+            or row["previous_reversal_return"] > row["previous_reversal_lower"]
+        )
+        crosses_upper = (
+            not config.reversal_require_cross
+            or row["previous_reversal_return"] < row["previous_reversal_upper"]
+        )
+        if (
+            config.allow_long
+            and row["reversal_return"] <= row["reversal_lower"]
+            and row["reversal_volume_ratio"] >= config.reversal_volume_ratio
+            and crosses_lower
+        ):
+            return 1
+        if (
+            config.allow_short
+            and row["reversal_return"] >= row["reversal_upper"]
+            and row["reversal_volume_ratio"] >= config.reversal_volume_ratio
+            and crosses_upper
+        ):
             return -1
     return 0
 
@@ -365,7 +457,7 @@ def run_backtest(frame: pd.DataFrame, config: Config) -> tuple[dict, pd.DataFram
     trades: list[dict] = []
     equity_rows: list[dict] = []
 
-    for timestamp, row in bars.iterrows():
+    for bar_index, (timestamp, row) in enumerate(bars.iterrows()):
         spread_points = float(row["spread"])
         spread_price = spread_points * config.point
         bid_open = float(row["open"])
@@ -405,7 +497,7 @@ def run_backtest(frame: pd.DataFrame, config: Config) -> tuple[dict, pd.DataFram
             volume = normalize_volume(raw_volume, config)
             if volume > 0:
                 stop = entry - pending_signal * stop_distance
-                target = entry + pending_signal * target_distance
+                target = entry + pending_signal * target_distance if target_distance > 0 else 0.0
                 actual_risk = stop_distance * volume * config.contract_size
                 position = Position(
                     direction=pending_signal,
@@ -415,6 +507,7 @@ def run_backtest(frame: pd.DataFrame, config: Config) -> tuple[dict, pd.DataFram
                     take_profit=target,
                     volume=volume,
                     initial_risk=actual_risk,
+                    entry_bar=bar_index,
                 )
 
         pending_signal = 0
@@ -423,7 +516,7 @@ def run_backtest(frame: pd.DataFrame, config: Config) -> tuple[dict, pd.DataFram
         if position is not None:
             if position.direction == 1:
                 stop_hit = bid_low <= position.stop
-                target_hit = bid_high >= position.take_profit
+                target_hit = position.take_profit > 0 and bid_high >= position.take_profit
                 if stop_hit:
                     exit_price = min(bid_open, position.stop)
                     cash, trade = exit_position(
@@ -440,7 +533,7 @@ def run_backtest(frame: pd.DataFrame, config: Config) -> tuple[dict, pd.DataFram
                     position = None
             else:
                 stop_hit = ask_high >= position.stop
-                target_hit = ask_low <= position.take_profit
+                target_hit = position.take_profit > 0 and ask_low <= position.take_profit
                 if stop_hit:
                     exit_price = max(ask_open, position.stop)
                     cash, trade = exit_position(
@@ -455,6 +548,16 @@ def run_backtest(frame: pd.DataFrame, config: Config) -> tuple[dict, pd.DataFram
                     )
                     trades.append(trade)
                     position = None
+
+        if (
+            position is not None
+            and config.time_exit_bars > 0
+            and bar_index - position.entry_bar >= config.time_exit_bars
+        ):
+            exit_price = bid_close if position.direction == 1 else ask_close
+            cash, trade = exit_position(position, timestamp, exit_price, "time_exit", cash, config)
+            trades.append(trade)
+            position = None
 
         if position is not None and pd.notna(row["atr"]):
             trail_distance = config.trailing_atr * float(row["atr"])

@@ -32,6 +32,12 @@ M5 趋势突破研究候选，但执行和风险架构本身与黄金无关。
   EMA/ADX/Donchian 候选，均未通过训练门槛。
 - [震荡候选研究](reports/Range_Candidate_Research.md)：8 个 M15/M30/H1
   Bollinger/RSI 候选，均未通过训练门槛。
+- [高频候选研究](reports/High_Frequency_Candidate_Research.md)：使用已收盘
+  H1/H4 趋势过滤的 M5 回撤候选，均未通过订单级回测。
+- [日内因子筛选](reports/Intraday_Factor_Screen.md)：计入成本的 M5 因子筛选；
+  初始反转规则在订单级转换后未通过。
+- [成交量反转订单研究](reports/Volume_Reversal_Candidate_Research.md)：固定时间
+  M5 退出和 ATR 止损候选，均未通过训练门槛。
 
 Python 中的震荡模型仅供研究，尚未实现到 MQL5。启用 EA 新开仓前，仍需要券商
 原生 XAUUSD bid/ask 数据、走样本外验证和模拟盘前向测试。

@@ -82,6 +82,57 @@ class BacktestTests(unittest.TestCase):
         row["regime"] = "trend"
         self.assertEqual(BACKTEST.signal_for_bar(row, config), 0)
 
+    def test_pullback_signal_requires_completed_higher_timeframe_trend(self) -> None:
+        config = BACKTEST.Config(strategy="trend_pullback", higher_timeframe="1h")
+        row = pd.Series(
+            {
+                "higher_fast_ma": 110.0,
+                "higher_slow_ma": 100.0,
+                "close": 99.0,
+                "bollinger_lower": 100.0,
+                "bollinger_upper": 110.0,
+                "rsi": 25.0,
+            }
+        )
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 1)
+        row["higher_fast_ma"] = 90.0
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 0)
+
+    def test_volume_reversal_signal_uses_trailing_extremes(self) -> None:
+        config = BACKTEST.Config(strategy="volume_reversal", take_profit_atr=0.0)
+        row = pd.Series(
+            {
+                "reversal_return": -0.01,
+                "reversal_lower": -0.005,
+                "reversal_upper": 0.005,
+                "reversal_volume_ratio": 2.0,
+            }
+        )
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 1)
+        row["reversal_return"] = 0.01
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), -1)
+
+    def test_volume_reversal_cross_blocks_repeated_extreme(self) -> None:
+        config = BACKTEST.Config(
+            strategy="volume_reversal",
+            take_profit_atr=0.0,
+            reversal_require_cross=True,
+        )
+        row = pd.Series(
+            {
+                "reversal_return": -0.01,
+                "reversal_lower": -0.005,
+                "reversal_upper": 0.005,
+                "reversal_volume_ratio": 2.0,
+                "previous_reversal_return": -0.008,
+                "previous_reversal_lower": -0.006,
+                "previous_reversal_upper": 0.006,
+            }
+        )
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 0)
+        row["previous_reversal_return"] = -0.004
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 1)
+
 
 def math_is_finite(value: float) -> bool:
     return bool(np.isfinite(value))
