@@ -2,8 +2,8 @@
 
 RegimeForgeEA is a modular, regime-aware algorithmic trading framework with an
 MQL5 Expert Advisor and a Python research backtester. It is instrument-agnostic:
-the first included strategy is configured for an aggressive XAUUSD M5 trend
-breakout, but the execution and risk architecture does not depend on gold.
+the first included strategy is an XAUUSD M5 trend-breakout research candidate,
+but the execution and risk architecture does not depend on gold.
 
 Chinese documentation: [README_zh-CN.md](README_zh-CN.md)
 
@@ -21,9 +21,43 @@ Chinese documentation: [README_zh-CN.md](README_zh-CN.md)
 - Spread, daily-loss, and peak-drawdown entry locks
 - Closed-bar signals to avoid look-ahead behavior
 - Python event backtester aligned with the EA's first strategy
+- Research-only Bollinger/RSI range model for candidate evaluation
 
-The current EA opens trades only in the trend regime. Range and high-volatility
-regimes remain inactive until dedicated strategy modules are added.
+The current EA manages only the trend-breakout research candidate. New entries
+are disabled by default (`InpEnableNewEntries=false`) because the current public
+research has not qualified any strategy for deployment. Range and
+high-volatility regimes remain inactive in the EA.
+
+## Research status
+
+Two independent strategy families were tested using pre-defined candidates and
+time splits: 2021–2023 training, 2024 validation, and 2025 final holdout.
+Neither family produced a candidate eligible for validation; therefore no
+candidate was evaluated on the final holdout and no profitable default is
+claimed.
+
+- [Trend candidate research](reports/Trend_Candidate_Research.md): eight
+  M15/M30/H1 EMA/ADX/Donchian candidates; all failed training gates.
+- [Range candidate research](reports/Range_Candidate_Research.md): eight
+  M15/M30/H1 Bollinger/RSI range candidates; all failed training gates.
+
+The Python range model is research-only and is not yet implemented in MQL5.
+Broker-native XAUUSD bid/ask data, walk-forward validation, and demo forward
+testing are required before enabling EA entries.
+
+Reproduce the fixed candidate studies after downloading the public-data set:
+
+```bash
+python scripts/research_trend_candidates.py \
+  data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
+  --output-json outputs/trend_candidate_research.json \
+  --report reports/Trend_Candidate_Research.md
+
+python scripts/research_range_candidates.py \
+  data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
+  --output-json outputs/range_candidate_research.json \
+  --report reports/Range_Candidate_Research.md
+```
 
 ## Latest public-data backtest
 
@@ -128,7 +162,8 @@ from verified public archives.
 - `InpStopATR` / `InpTakeProfitATR`: ATR stop and target multipliers
 
 The defaults are intentionally aggressive. They are not a profit expectation
-and should not be used with real funds without broker-specific validation.
+and should not be used with real funds without broker-specific validation. New
+EA entries are disabled by default until a strategy passes the documented gates.
 
 ## Adding strategies
 

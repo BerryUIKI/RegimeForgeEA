@@ -58,6 +58,30 @@ class BacktestTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             BACKTEST.Config(volume_max=0.001, volume_min=0.01).validate()
 
+    def test_resampling_preserves_ohlc_extremes(self) -> None:
+        bars = self.make_trending_bars(count=6)
+        resampled = BACKTEST.resample_bars(bars, "15min")
+        self.assertEqual(len(resampled), 2)
+        self.assertEqual(resampled["open"].iloc[0], bars["open"].iloc[0])
+        self.assertEqual(resampled["close"].iloc[0], bars["close"].iloc[2])
+        self.assertEqual(resampled["high"].iloc[0], bars["high"].iloc[:3].max())
+        self.assertEqual(resampled["low"].iloc[0], bars["low"].iloc[:3].min())
+
+    def test_range_signal_requires_a_range_regime(self) -> None:
+        config = BACKTEST.Config(strategy="range_mean_reversion")
+        row = pd.Series(
+            {
+                "regime": "range",
+                "close": 99.0,
+                "bollinger_lower": 100.0,
+                "bollinger_upper": 110.0,
+                "rsi": 25.0,
+            }
+        )
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 1)
+        row["regime"] = "trend"
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 0)
+
 
 def math_is_finite(value: float) -> bool:
     return bool(np.isfinite(value))

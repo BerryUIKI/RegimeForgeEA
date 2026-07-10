@@ -10,6 +10,7 @@
 input group "General"
 input ENUM_TIMEFRAMES InpSignalTimeframe=PERIOD_M5;
 input ulong           InpMagicNumber=26070901;
+input bool            InpEnableNewEntries=false;
 input bool            InpAllowLong=true;
 input bool            InpAllowShort=true;
 input int             InpSlippagePoints=30;
@@ -236,6 +237,8 @@ void ManageTrailingStop()
 
 void TryOpenPosition(const TradeSignal &signal)
   {
+   if(!InpEnableNewEntries)
+      return;
    if(signal.direction==SIGNAL_NONE || HasManagedPosition() || !SpreadAllowed())
       return;
    if(HasUnmanagedNettingPosition())

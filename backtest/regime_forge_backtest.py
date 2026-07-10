@@ -14,6 +14,7 @@ import pandas as pd
 
 @dataclass(frozen=True)
 class Config:
+    strategy: str = "trend_breakout"
     initial_equity: float = 10_000.0
     risk_percent: float = 1.0
     max_daily_loss_percent: float = 4.0
@@ -36,6 +37,11 @@ class Config:
     stop_atr: float = 1.6
     take_profit_atr: float = 3.0
     trailing_atr: float = 1.2
+    bollinger_period: int = 20
+    bollinger_deviation: float = 2.0
+    rsi_period: int = 14
+    rsi_lower: float = 30.0
+    rsi_upper: float = 70.0
     allow_long: bool = True
     allow_short: bool = True
 
@@ -52,12 +58,16 @@ class Config:
             raise ValueError("spread parameters must be non-negative")
         if self.fast_ma_period >= self.slow_ma_period:
             raise ValueError("fast_ma_period must be below slow_ma_period")
+        if self.strategy not in {"trend_breakout", "range_mean_reversion"}:
+            raise ValueError("strategy must be trend_breakout or range_mean_reversion")
         if min(
             self.fast_ma_period,
             self.slow_ma_period,
             self.atr_period,
             self.adx_period,
             self.breakout_bars,
+            self.bollinger_period,
+            self.rsi_period,
         ) <= 0:
             raise ValueError("indicator and breakout periods must be positive")
         positive = (
@@ -75,6 +85,10 @@ class Config:
             raise ValueError("price, volume, and ATR parameters must be positive")
         if self.volume_max < self.volume_min:
             raise ValueError("volume_max must be at least volume_min")
+        if self.bollinger_deviation <= 0:
+            raise ValueError("bollinger_deviation must be positive")
+        if not 0 < self.rsi_lower < self.rsi_upper < 100:
+            raise ValueError("RSI thresholds must satisfy 0 < lower < upper < 100")
 
 
 @dataclass
@@ -134,6 +148,28 @@ def load_bars(path: Path, default_spread_points: float) -> pd.DataFrame:
     if (frame["spread"] < 0).any():
         raise ValueError("spread values must be non-negative")
     return frame
+
+
+def resample_bars(frame: pd.DataFrame, interval: str) -> pd.DataFrame:
+    """Aggregate UTC OHLC bars without changing the configured spread model."""
+    if not interval:
+        return frame.copy()
+    aggregations = {
+        "open": "first",
+        "high": "max",
+        "low": "min",
+        "close": "last",
+        "spread": "last",
+    }
+    optional_sums = ("tick_volume", "real_volume", "volume", "quote_volume", "trade_count")
+    aggregations.update(
+        {column: "sum" for column in optional_sums if column in frame.columns}
+    )
+    result = frame.resample(interval, label="left", closed="left").agg(aggregations)
+    result = result.dropna(subset=["open", "high", "low", "close"])
+    if result.empty:
+        raise ValueError(f"No bars remain after resampling to {interval}")
+    return result
 
 
 def seeded_average(values: pd.Series, period: int, alpha: float) -> pd.Series:
@@ -207,6 +243,15 @@ def add_indicators(frame: pd.DataFrame, config: Config) -> pd.DataFrame:
     result["prior_low"] = (
         result["low"].shift(1).rolling(config.breakout_bars).min()
     )
+    result["bollinger_mid"] = result["close"].rolling(config.bollinger_period).mean()
+    bollinger_std = result["close"].rolling(config.bollinger_period).std(ddof=0)
+    result["bollinger_upper"] = result["bollinger_mid"] + config.bollinger_deviation * bollinger_std
+    result["bollinger_lower"] = result["bollinger_mid"] - config.bollinger_deviation * bollinger_std
+    delta = result["close"].diff()
+    average_gain = wilder_average(delta.clip(lower=0.0).fillna(0.0), config.rsi_period)
+    average_loss = wilder_average((-delta.clip(upper=0.0)).fillna(0.0), config.rsi_period)
+    relative_strength = average_gain / average_loss.replace(0.0, np.nan)
+    result["rsi"] = 100.0 - 100.0 / (1.0 + relative_strength)
     result["regime"] = "unknown"
     ready = result[["fast_ma", "slow_ma", "atr", "atr_slow", "adx"]].notna().all(axis=1)
     high_volatility = ready & (
@@ -220,22 +265,30 @@ def add_indicators(frame: pd.DataFrame, config: Config) -> pd.DataFrame:
 
 
 def signal_for_bar(row: pd.Series, config: Config) -> int:
-    if row["regime"] != "trend":
-        return 0
-    if (
-        config.allow_long
-        and row["fast_ma"] > row["slow_ma"]
-        and row["close"] > row["prior_high"]
-        and row["close"] > row["open"]
-    ):
-        return 1
-    if (
-        config.allow_short
-        and row["fast_ma"] < row["slow_ma"]
-        and row["close"] < row["prior_low"]
-        and row["close"] < row["open"]
-    ):
-        return -1
+    if config.strategy == "trend_breakout":
+        if row["regime"] != "trend":
+            return 0
+        if (
+            config.allow_long
+            and row["fast_ma"] > row["slow_ma"]
+            and row["close"] > row["prior_high"]
+            and row["close"] > row["open"]
+        ):
+            return 1
+        if (
+            config.allow_short
+            and row["fast_ma"] < row["slow_ma"]
+            and row["close"] < row["prior_low"]
+            and row["close"] < row["open"]
+        ):
+            return -1
+    if config.strategy == "range_mean_reversion":
+        if row["regime"] != "range":
+            return 0
+        if config.allow_long and row["close"] < row["bollinger_lower"] and row["rsi"] <= config.rsi_lower:
+            return 1
+        if config.allow_short and row["close"] > row["bollinger_upper"] and row["rsi"] >= config.rsi_upper:
+            return -1
     return 0
 
 
@@ -498,6 +551,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--volume-max", type=float, default=100.0)
     parser.add_argument("--volume-step", type=float, default=0.01)
     parser.add_argument("--commission", type=float, default=0.0)
+    parser.add_argument(
+        "--resample",
+        help="Optional pandas offset alias, such as 15min, 30min, or 1h.",
+    )
     return parser
 
 
@@ -518,6 +575,7 @@ def main() -> None:
         commission_per_lot_round_turn=args.commission,
     )
     bars = load_bars(args.csv, config.default_spread_points)
+    bars = resample_bars(bars, args.resample)
     if len(bars) < config.atr_period * 4 + config.breakout_bars:
         raise ValueError("Not enough bars for indicator warm-up")
 
