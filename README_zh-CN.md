@@ -161,6 +161,11 @@ MQL5/
 `InpMinimumVolumeRatio=1.50` 和 `InpHoldBars=24`。EA 使用 MT5 tick volume，
 它与代理数据的交易所成交量不同；这正是经纪商原生测试将高于代理结果的原因。
 
+保守的自适应测试档已作为默认值启用：`InpFixedLots=0.02`、仅在已完成 H1 满足
+`EMA(20) > EMA(50)` 时交易、2% 日内已实现亏损锁，以及连续四笔亏损后冷却 12 根
+M5。其代理数据[自适应回测](reports/M5_Adaptive_Volume_Reversal_Backtest.md)降低了
+2025 最大回撤，但并未改善每个历史样本；必须在 MT5 中独立验证。
+
 ## Python 回测
 
 安装依赖：

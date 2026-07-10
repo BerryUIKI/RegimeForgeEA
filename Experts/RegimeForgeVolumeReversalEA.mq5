@@ -9,9 +9,18 @@ input group "General"
 input ENUM_TIMEFRAMES InpSignalTimeframe=PERIOD_M5;
 input ulong           InpMagicNumber=26071002;
 input bool            InpEnableNewEntries=false;
-input double          InpFixedLots=0.10;
+input double          InpFixedLots=0.02;
 input int             InpMaxSpreadPoints=80;
 input int             InpSlippagePoints=30;
+input double          InpMaxDailyLossPct=2.00;
+input int             InpMaxConsecutiveLosses=4;
+input int             InpCooldownBars=12;
+
+input group "Completed Higher-Timeframe Trend Filter"
+input bool            InpUseHigherTrendFilter=true;
+input ENUM_TIMEFRAMES InpTrendTimeframe=PERIOD_H1;
+input int             InpTrendFastMAPeriod=20;
+input int             InpTrendSlowMAPeriod=50;
 
 input group "Volume-Confirmed Reversal"
 input int             InpReturnLookbackBars=3;
@@ -23,6 +32,12 @@ input int             InpHoldBars=24;
 
 CTrade   g_trade;
 datetime g_last_bar_time=0;
+datetime g_cooldown_until=0;
+double   g_day_start_balance=0.0;
+int      g_day_key=-1;
+int      g_consecutive_losses=0;
+int      g_trend_fast_handle=INVALID_HANDLE;
+int      g_trend_slow_handle=INVALID_HANDLE;
 
 double NormalizeVolume(const double raw_volume)
   {
@@ -42,6 +57,46 @@ bool SpreadAllowed()
    const double point=SymbolInfoDouble(_Symbol,SYMBOL_POINT);
    return point>0.0 && SymbolInfoTick(_Symbol,tick) &&
           (tick.ask-tick.bid)/point<=InpMaxSpreadPoints;
+  }
+
+int CurrentDayKey()
+  {
+   MqlDateTime now;
+   TimeToStruct(TimeCurrent(),now);
+   return now.year*1000+now.day_of_year;
+  }
+
+void RefreshDailyRiskState()
+  {
+   const int day_key=CurrentDayKey();
+   if(day_key!=g_day_key)
+     {
+      g_day_key=day_key;
+      g_day_start_balance=AccountInfoDouble(ACCOUNT_BALANCE);
+     }
+  }
+
+bool DailyLossLockActive()
+  {
+   RefreshDailyRiskState();
+   if(InpMaxDailyLossPct<=0.0 || g_day_start_balance<=0.0)
+      return false;
+   return AccountInfoDouble(ACCOUNT_BALANCE)<=
+          g_day_start_balance*(1.0-InpMaxDailyLossPct/100.0);
+  }
+
+bool HigherTrendAllowed()
+  {
+   if(!InpUseHigherTrendFilter)
+      return true;
+   double fast[1];
+   double slow[1];
+   if(g_trend_fast_handle==INVALID_HANDLE || g_trend_slow_handle==INVALID_HANDLE ||
+      CopyBuffer(g_trend_fast_handle,0,1,1,fast)!=1 ||
+      CopyBuffer(g_trend_slow_handle,0,1,1,slow)!=1)
+      return false;
+   return MathIsValidNumber(fast[0]) && MathIsValidNumber(slow[0]) &&
+          fast[0]>slow[0];
   }
 
 bool HasManagedPosition(ulong &ticket)
@@ -146,9 +201,56 @@ int OnInit()
   {
    if(InpFixedLots<=0.0 || InpHoldBars<=0)
       return INIT_PARAMETERS_INCORRECT;
+   if(InpTrendFastMAPeriod<=0 || InpTrendSlowMAPeriod<=InpTrendFastMAPeriod ||
+      InpMaxDailyLossPct<0.0 || InpMaxConsecutiveLosses<0 || InpCooldownBars<0)
+      return INIT_PARAMETERS_INCORRECT;
    g_trade.SetExpertMagicNumber(InpMagicNumber);
    g_trade.SetDeviationInPoints(InpSlippagePoints);
+   g_trend_fast_handle=iMA(_Symbol,InpTrendTimeframe,InpTrendFastMAPeriod,0,
+                            MODE_EMA,PRICE_CLOSE);
+   g_trend_slow_handle=iMA(_Symbol,InpTrendTimeframe,InpTrendSlowMAPeriod,0,
+                            MODE_EMA,PRICE_CLOSE);
+   if(g_trend_fast_handle==INVALID_HANDLE || g_trend_slow_handle==INVALID_HANDLE)
+      return INIT_FAILED;
+   RefreshDailyRiskState();
    return INIT_SUCCEEDED;
+  }
+
+void OnDeinit(const int reason)
+  {
+   if(g_trend_fast_handle!=INVALID_HANDLE)
+      IndicatorRelease(g_trend_fast_handle);
+   if(g_trend_slow_handle!=INVALID_HANDLE)
+      IndicatorRelease(g_trend_slow_handle);
+  }
+
+void OnTradeTransaction(const MqlTradeTransaction &transaction,
+                        const MqlTradeRequest &request,
+                        const MqlTradeResult &result)
+  {
+   if(transaction.type!=TRADE_TRANSACTION_DEAL_ADD || transaction.deal==0 ||
+      !HistoryDealSelect(transaction.deal))
+      return;
+   if(HistoryDealGetString(transaction.deal,DEAL_SYMBOL)!=_Symbol ||
+      (ulong)HistoryDealGetInteger(transaction.deal,DEAL_MAGIC)!=InpMagicNumber ||
+      HistoryDealGetInteger(transaction.deal,DEAL_ENTRY)!=DEAL_ENTRY_OUT)
+      return;
+   const double net_profit=HistoryDealGetDouble(transaction.deal,DEAL_PROFIT)+
+                           HistoryDealGetDouble(transaction.deal,DEAL_SWAP)+
+                           HistoryDealGetDouble(transaction.deal,DEAL_COMMISSION);
+   if(net_profit<0.0)
+     {
+      g_consecutive_losses++;
+      if(InpMaxConsecutiveLosses>0 &&
+         g_consecutive_losses>=InpMaxConsecutiveLosses)
+        {
+         g_cooldown_until=TimeCurrent()+InpCooldownBars*PeriodSeconds(InpSignalTimeframe);
+         g_consecutive_losses=0;
+         Print("Loss cooldown activated until ",TimeToString(g_cooldown_until));
+        }
+     }
+   else
+      g_consecutive_losses=0;
   }
 
 void OnTick()
@@ -163,7 +265,8 @@ void OnTick()
       return;
      }
    if(!InpEnableNewEntries || HasUnmanagedNettingPosition() || !SpreadAllowed() ||
-      !IsLongSignal())
+      DailyLossLockActive() || TimeCurrent()<g_cooldown_until ||
+      !HigherTrendAllowed() || !IsLongSignal())
       return;
 
    const double volume=NormalizeVolume(InpFixedLots);

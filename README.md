@@ -181,6 +181,13 @@ which differs from the proxy's exchange-traded volume; this is intentional for
 the broker-native validation and makes the test result authoritative over the
 proxy result.
 
+The conservative adaptive test profile is enabled by default: `InpFixedLots=0.02`,
+a completed-H1 `EMA(20) > EMA(50)` filter, a 2% daily realized-loss lock, and
+a 12-bar cooldown after four consecutive losing exits. Its proxy-data
+[adaptive backtest](reports/M5_Adaptive_Volume_Reversal_Backtest.md) reduced
+2025 maximum drawdown versus the original candidate, but did not improve every
+historical sample; validate this profile independently in MT5.
+
 ## Python backtest
 
 Install the dependencies:
