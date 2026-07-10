@@ -61,6 +61,8 @@ claimed.
   volume-confirmed three-bar reversal candidate passed the 2021–2023 training,
   2024 validation, and 2025 holdout on the public PAXGUSDT proxy. It remains
   research-only until it passes broker-native XAUUSD bid/ask validation.
+  The [formal research report](reports/M5_Volume_Reversal_Research_Report.md)
+  is also available as a PDF in the repository.
 
 The Python range model is research-only and is not yet implemented in MQL5.
 Broker-native XAUUSD bid/ask data, walk-forward validation, and demo forward

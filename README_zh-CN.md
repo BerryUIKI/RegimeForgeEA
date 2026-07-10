@@ -49,6 +49,8 @@ M5 趋势突破研究候选，但执行和风险架构本身与黄金无关。
   [预先固定的留出检验](reports/M5_Volume_Reversal_Holdout.md)：成交量确认的
   三根收益反转候选在公开 PAXGUSDT 代理的 2021–2023 训练、2024 验证和 2025
   留出集均通过；在经纪商原生 XAUUSD Bid/Ask 验证前，它仍仅限研究，不会接入 EA。
+  完整的[正式研究报告](reports/M5_Volume_Reversal_Research_Report.md)及 PDF 也已
+  随仓库提供。
 
 Python 中的震荡模型仅供研究，尚未实现到 MQL5。启用 EA 新开仓前，仍需要券商
 原生 XAUUSD bid/ask 数据、走样本外验证和模拟盘前向测试。
