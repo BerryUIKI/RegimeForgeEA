@@ -121,6 +121,7 @@ XAUUSD 报价，因此不能把结果描述为实盘验证。
 ```text
 MQL5/
 ├── Experts/RegimeForgeEA.mq5
+├── Experts/RegimeForgeVolumeReversalEA.mq5
 └── Include/RegimeForge/
     ├── StrategyTypes.mqh
     └── TrendBreakoutStrategy.mqh
@@ -128,6 +129,15 @@ MQL5/
 
 将文件复制到 MT5 数据目录下 `MQL5` 的对应位置，然后使用 MetaEditor 编译
 `Experts/RegimeForgeEA.mq5`。EA 使用 `_Symbol`，应挂载到需要交易的品种图表。
+
+### M5 成交量反转测试 EA
+
+`Experts/RegimeForgeVolumeReversalEA.mq5` 是代理数据研究候选的独立实现。
+在 MT5 策略测试器中将其挂载到 XAUUSD M5 图表，使用经纪商真实点差与 tick 设置；
+仅为测试将 `InpEnableNewEntries=true`。候选核心参数为
+`InpReturnLookbackBars=3`、`InpQuantileBars=5760`、
+`InpMinimumVolumeRatio=1.50` 和 `InpHoldBars=24`。EA 使用 MT5 tick volume，
+它与代理数据的交易所成交量不同；这正是经纪商原生测试将高于代理结果的原因。
 
 ## Python 回测
 

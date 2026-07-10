@@ -136,6 +136,7 @@ Read the [full report](reports/PAXGUSDT_2021_2025.md) and inspect the
 ```text
 MQL5/
 ├── Experts/RegimeForgeEA.mq5
+├── Experts/RegimeForgeVolumeReversalEA.mq5
 └── Include/RegimeForge/
     ├── StrategyTypes.mqh
     └── TrendBreakoutStrategy.mqh
@@ -144,6 +145,18 @@ MQL5/
 Copy the files into the corresponding folders under the MT5 `MQL5` data
 directory and compile `Experts/RegimeForgeEA.mq5` in MetaEditor. Attach it to
 the chart and symbol that should be traded; the EA uses `_Symbol`.
+
+### M5 volume-reversal test EA
+
+`Experts/RegimeForgeVolumeReversalEA.mq5` is a separate implementation of the
+proxy-data research candidate. In MT5 Strategy Tester, attach it to an XAUUSD
+M5 chart, use the broker's actual spread/tick settings, and set
+`InpEnableNewEntries=true` only for the test. Its key candidate settings are
+`InpReturnLookbackBars=3`, `InpQuantileBars=5760`,
+`InpMinimumVolumeRatio=1.50`, and `InpHoldBars=24`. It uses MT5 tick volume,
+which differs from the proxy's exchange-traded volume; this is intentional for
+the broker-native validation and makes the test result authoritative over the
+proxy result.
 
 ## Python backtest
 
