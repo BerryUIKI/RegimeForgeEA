@@ -38,6 +38,13 @@ M5 趋势突破研究候选，但执行和风险架构本身与黄金无关。
   初始反转规则在订单级转换后未通过。
 - [成交量反转订单研究](reports/Volume_Reversal_Candidate_Research.md)：固定时间
   M5 退出和 ATR 止损候选，均未通过训练门槛。
+- [M5 订单流因子筛选](reports/Order_Flow_Factor_Screen.md)及其
+  [订单级结果](reports/Order_Flow_Absorption_Backtest.md)：表面上的事件级吸收
+  效应在纳入下一根成交与非重叠持仓后失败。
+- [M1 订单流因子筛选](reports/Order_Flow_Factor_Screen_1m.md)及其
+  [订单级结果](reports/Order_Flow_Absorption_Backtest_1m.md)：一分钟、
+  1,542,455 根柱的筛选在训练和验证中出现事件级正均值，但预先固定的可成交规则
+  在三个样本期均失败；因此已淘汰，不会接入 EA。
 
 Python 中的震荡模型仅供研究，尚未实现到 MQL5。启用 EA 新开仓前，仍需要券商
 原生 XAUUSD bid/ask 数据、走样本外验证和模拟盘前向测试。
@@ -54,6 +61,18 @@ python scripts/research_range_candidates.py \
   data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
   --output-json outputs/range_candidate_research.json \
   --report reports/Range_Candidate_Research.md
+
+python scripts/download_binance_aggtrades.py \
+  --symbol PAXGUSDT --start 2021-01 --end 2025-12 \
+  --bar-interval 1min --weekdays-only \
+  --output data/derived/PAXGUSDT_order_flow_1m_2021_2025_weekdays.csv
+
+python scripts/explore_order_flow_factors.py \
+  data/derived/PAXGUSDT_order_flow_1m_2021_2025_weekdays.csv \
+  data/derived/PAXGUSDT_order_flow_1m_2021_2025_weekdays.csv \
+  --bar-minutes 1 --horizons 5,10,20,30 \
+  --output outputs/order_flow_factor_screen_1m.csv \
+  --report reports/Order_Flow_Factor_Screen_1m.md
 ```
 
 ## 最新公开数据回测

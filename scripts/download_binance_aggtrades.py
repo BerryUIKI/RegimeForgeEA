@@ -1,4 +1,4 @@
-"""Download verified Binance aggregate-trade archives and create M5 order-flow bars."""
+"""Download verified Binance aggregate-trade archives and create order-flow bars."""
 
 from __future__ import annotations
 
@@ -62,8 +62,18 @@ def main() -> None:
     parser.add_argument("--symbol", default="PAXGUSDT")
     parser.add_argument("--start", default="2021-01")
     parser.add_argument("--end", default="2025-12")
+    parser.add_argument(
+        "--bar-interval",
+        default="5min",
+        help="Pandas resampling interval for derived bars, such as 1min or 5min.",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--cache-dir", type=Path, default=Path("data/cache/binance-aggtrades"))
+    parser.add_argument(
+        "--weekdays-only",
+        action="store_true",
+        help="Remove Saturday and Sunday UTC observations for a 24/5 XAUUSD proxy.",
+    )
     args = parser.parse_args()
     args.cache_dir.mkdir(parents=True, exist_ok=True)
     frames: list[pd.DataFrame] = []
@@ -104,7 +114,12 @@ def main() -> None:
     trades = pd.concat(frames, ignore_index=True).sort_values("time")
     trades["buy_taker_quantity"] = trades["quantity"].where(~trades["is_buyer_maker"], 0.0)
     trades["sell_taker_quantity"] = trades["quantity"].where(trades["is_buyer_maker"], 0.0)
-    bars = trades.set_index("time").resample("5min").agg(
+    bars = trades.set_index("time").resample(args.bar_interval).agg(
+        open=("price", "first"),
+        high=("price", "max"),
+        low=("price", "min"),
+        close=("price", "last"),
+        volume=("quantity", "sum"),
         buy_taker_quantity=("buy_taker_quantity", "sum"),
         sell_taker_quantity=("sell_taker_quantity", "sum"),
         trade_count=("quantity", "size"),
@@ -114,7 +129,9 @@ def main() -> None:
         (bars["buy_taker_quantity"] - bars["sell_taker_quantity"])
         / bars["total_taker_quantity"].replace(0.0, pd.NA)
     )
-    bars = bars.dropna(subset=["order_flow_imbalance"])
+    bars = bars.dropna(subset=["open", "high", "low", "close", "order_flow_imbalance"])
+    if args.weekdays_only:
+        bars = bars.loc[bars.index.dayofweek < 5]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     bars.to_csv(args.output, index_label="time")
     args.output.with_suffix(".manifest.json").write_text(
@@ -124,6 +141,8 @@ def main() -> None:
                 "archives": manifest,
                 "missing_months": missing_months,
                 "bars": len(bars),
+                "bar_interval": args.bar_interval,
+                "weekdays_only": args.weekdays_only,
             }
         ).to_json(indent=2),
         encoding="utf-8",

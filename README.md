@@ -47,6 +47,15 @@ claimed.
   M5 factor screen; order-level conversion of the initial reversal rule failed.
 - [Volume-reversal order research](reports/Volume_Reversal_Candidate_Research.md):
   fixed-time M5 exits and ATR stops; all candidates failed training gates.
+- [M5 order-flow factor screen](reports/Order_Flow_Factor_Screen.md) and
+  [order-level result](reports/Order_Flow_Absorption_Backtest.md): the apparent
+  event-level absorption effect failed once next-bar execution and non-overlap
+  were imposed.
+- [M1 order-flow factor screen](reports/Order_Flow_Factor_Screen_1m.md) and
+  [order-level result](reports/Order_Flow_Absorption_Backtest_1m.md): a
+  one-minute, 1,542,455-bar screen produced positive event means in training
+  and validation, but its pre-specified executable rule failed in all three
+  samples. It is therefore rejected, not integrated into the EA.
 
 The Python range model is research-only and is not yet implemented in MQL5.
 Broker-native XAUUSD bid/ask data, walk-forward validation, and demo forward
@@ -64,6 +73,18 @@ python scripts/research_range_candidates.py \
   data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
   --output-json outputs/range_candidate_research.json \
   --report reports/Range_Candidate_Research.md
+
+python scripts/download_binance_aggtrades.py \
+  --symbol PAXGUSDT --start 2021-01 --end 2025-12 \
+  --bar-interval 1min --weekdays-only \
+  --output data/derived/PAXGUSDT_order_flow_1m_2021_2025_weekdays.csv
+
+python scripts/explore_order_flow_factors.py \
+  data/derived/PAXGUSDT_order_flow_1m_2021_2025_weekdays.csv \
+  data/derived/PAXGUSDT_order_flow_1m_2021_2025_weekdays.csv \
+  --bar-minutes 1 --horizons 5,10,20,30 \
+  --output outputs/order_flow_factor_screen_1m.csv \
+  --report reports/Order_Flow_Factor_Screen_1m.md
 ```
 
 ## Latest public-data backtest
