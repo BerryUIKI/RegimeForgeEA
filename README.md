@@ -186,7 +186,10 @@ a completed-H1 `EMA(20) > EMA(50)` filter, a 2% daily realized-loss lock, and
 a 12-bar cooldown after four consecutive losing exits. Its proxy-data
 [adaptive backtest](reports/M5_Adaptive_Volume_Reversal_Backtest.md) reduced
 2025 maximum drawdown versus the original candidate, but did not improve every
-historical sample; validate this profile independently in MT5.
+historical sample; validate this profile independently in MT5. The detailed
+[adaptive research paper](reports/M5_Adaptive_Volume_Reversal_Research_Paper.md)
+and [PDF](reports/M5_Adaptive_Volume_Reversal_Research_Paper.pdf) document the
+selection caveat, risk analysis, and professional-test protocol.
 
 ## Python backtest
 

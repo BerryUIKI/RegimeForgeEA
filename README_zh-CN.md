@@ -165,6 +165,9 @@ MQL5/
 `EMA(20) > EMA(50)` 时交易、2% 日内已实现亏损锁，以及连续四笔亏损后冷却 12 根
 M5。其代理数据[自适应回测](reports/M5_Adaptive_Volume_Reversal_Backtest.md)降低了
 2025 最大回撤，但并未改善每个历史样本；必须在 MT5 中独立验证。
+详细的[自适应研究论文](reports/M5_Adaptive_Volume_Reversal_Research_Paper.md)及其
+[PDF](reports/M5_Adaptive_Volume_Reversal_Research_Paper.pdf)记录了选型限制、
+风险分析和专业测试流程。
 
 ## Python 回测
 
