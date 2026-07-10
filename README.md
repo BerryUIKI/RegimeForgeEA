@@ -56,6 +56,11 @@ claimed.
   one-minute, 1,542,455-bar screen produced positive event means in training
   and validation, but its pre-specified executable rule failed in all three
   samples. It is therefore rejected, not integrated into the EA.
+- [M5 executable factor grid](reports/M5_Executable_Factor_Grid.md) and
+  [pre-specified holdout](reports/M5_Volume_Reversal_Holdout.md): the
+  volume-confirmed three-bar reversal candidate passed the 2021–2023 training,
+  2024 validation, and 2025 holdout on the public PAXGUSDT proxy. It remains
+  research-only until it passes broker-native XAUUSD bid/ask validation.
 
 The Python range model is research-only and is not yet implemented in MQL5.
 Broker-native XAUUSD bid/ask data, walk-forward validation, and demo forward
@@ -85,6 +90,20 @@ python scripts/explore_order_flow_factors.py \
   --bar-minutes 1 --horizons 5,10,20,30 \
   --output outputs/order_flow_factor_screen_1m.csv \
   --report reports/Order_Flow_Factor_Screen_1m.md
+
+python scripts/research_m5_order_flow_grid.py \
+  data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
+  data/derived/PAXGUSDT_order_flow_5m_2021_2025.csv \
+  --output outputs/m5_executable_factor_grid.csv \
+  --report reports/M5_Executable_Factor_Grid.md
+
+python scripts/research_order_flow_absorption.py \
+  data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
+  data/derived/PAXGUSDT_order_flow_5m_2021_2025.csv \
+  --factor volume_return_3_reversal --bar-minutes 5 --hold-bars 24 \
+  --side long --session-hours 0-23 \
+  --trades outputs/m5_volume_reversal_holdout_trades.csv \
+  --report reports/M5_Volume_Reversal_Holdout.md
 ```
 
 ## Latest public-data backtest

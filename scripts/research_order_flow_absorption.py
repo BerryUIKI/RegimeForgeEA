@@ -22,9 +22,13 @@ LOT_SIZE = 0.10
 CONTRACT_SIZE = 100.0
 
 
-def run_strategy(frame: pd.DataFrame, hold_bars: int, side: str, session_hours: tuple[int, ...]) -> pd.DataFrame:
+def run_strategy(frame: pd.DataFrame, hold_bars: int, side: str, session_hours: tuple[int, ...], factor: str) -> pd.DataFrame:
     """Trade non-overlapping long absorption events at next-bar bid/ask prices."""
-    if side == "long":
+    if factor == "volume_return_3_reversal" and side == "long":
+        signal = (frame["ret_3"] <= frame["return_lower"]) & (frame["volume"] / frame["volume"].rolling(60).mean() >= 1.5)
+    elif factor == "volume_return_3_reversal":
+        signal = (frame["ret_3"] >= frame["return_upper"]) & (frame["volume"] / frame["volume"].rolling(60).mean() >= 1.5)
+    elif side == "long":
         signal = (frame["ret_3"] <= frame["return_lower"]) & (frame["ofi_3"] >= frame["ofi_3_upper"])
     else:
         signal = (frame["ret_3"] >= frame["return_upper"]) & (frame["ofi_3"] <= frame["ofi_3_lower"])
@@ -90,6 +94,7 @@ def main() -> None:
     parser.add_argument("--bar-minutes", type=int, default=5)
     parser.add_argument("--hold-bars", type=int, default=6)
     parser.add_argument("--side", choices=("long", "short"), default="long")
+    parser.add_argument("--factor", choices=("absorption", "volume_return_3_reversal"), default="absorption")
     parser.add_argument("--session-hours", default="0-23", help="UTC hours, for example 13-20.")
     args = parser.parse_args()
     ohlc = load_bars(args.ohlc_csv, default_spread_points=35.0)
@@ -110,7 +115,7 @@ def main() -> None:
     all_trades: list[pd.DataFrame] = []
     summaries: dict[str, dict[str, float | int]] = {}
     for name, sample in periods.items():
-        trades = run_strategy(sample, args.hold_bars, args.side, tuple(range(start_hour, end_hour + 1)))
+        trades = run_strategy(sample, args.hold_bars, args.side, tuple(range(start_hour, end_hour + 1)), args.factor)
         if not trades.empty:
             trades.insert(0, "sample", name)
             all_trades.append(trades)
@@ -119,13 +124,13 @@ def main() -> None:
     args.trades.parent.mkdir(parents=True, exist_ok=True)
     output.to_csv(args.trades, index=False)
     lines = [
-        "# Order-flow absorption order-level backtest",
+        "# Order-level factor backtest",
         "",
         "## Pre-specified rule",
         "",
-        f"This test fixes the rule before evaluating 2025: use the `ofi_price_absorption` {args.side} factor during UTC {start_hour:02d}:00–{end_hour:02d}:59 and hold for {args.hold_bars} {args.bar_minutes}-minute bars. The choice must be made from training statistics only, not from 2025 data.",
+        f"This test fixes the rule before evaluating 2025: use the `{args.factor}` {args.side} factor during UTC {start_hour:02d}:00–{end_hour:02d}:59 and hold for {args.hold_bars} {args.bar_minutes}-minute bars. The choice is fixed from training and validation before 2025 is examined.",
         "",
-        f"At close t, an absorption signal combines a three-bar price extreme with an opposite three-bar OFI extreme. Both thresholds are shifted by one {args.bar_minutes}-minute bar. Enter at the next bar's bid/ask and exit at the close of bar t+{args.hold_bars}, charging a 0.35 USD round-trip spread. Positions do not overlap. Results use 0.10 lot and a 100 oz contract only to express PnL; factor metrics are independent of size.",
+        (f"At close t, the volume-reversal rule buys when the three-bar return is at or below its trailing 20-trading-day 20th percentile and current volume is at least 1.5 times its trailing 60-bar mean. Thresholds are shifted by one {args.bar_minutes}-minute bar." if args.factor == "volume_return_3_reversal" else f"At close t, an absorption signal combines a three-bar price extreme with an opposite three-bar OFI extreme. Both thresholds are shifted by one {args.bar_minutes}-minute bar.") + f" Enter at the next bar's bid/ask and exit at the close of bar t+{args.hold_bars}, charging a 0.35 USD round-trip spread. Positions do not overlap. Results use 0.10 lot and a 100 oz contract only to express PnL; factor metrics are independent of size.",
         "",
         "## Results",
         "",

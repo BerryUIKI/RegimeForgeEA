@@ -45,6 +45,10 @@ M5 趋势突破研究候选，但执行和风险架构本身与黄金无关。
   [订单级结果](reports/Order_Flow_Absorption_Backtest_1m.md)：一分钟、
   1,542,455 根柱的筛选在训练和验证中出现事件级正均值，但预先固定的可成交规则
   在三个样本期均失败；因此已淘汰，不会接入 EA。
+- [M5 可成交因子网格](reports/M5_Executable_Factor_Grid.md)及其
+  [预先固定的留出检验](reports/M5_Volume_Reversal_Holdout.md)：成交量确认的
+  三根收益反转候选在公开 PAXGUSDT 代理的 2021–2023 训练、2024 验证和 2025
+  留出集均通过；在经纪商原生 XAUUSD Bid/Ask 验证前，它仍仅限研究，不会接入 EA。
 
 Python 中的震荡模型仅供研究，尚未实现到 MQL5。启用 EA 新开仓前，仍需要券商
 原生 XAUUSD bid/ask 数据、走样本外验证和模拟盘前向测试。
@@ -73,6 +77,20 @@ python scripts/explore_order_flow_factors.py \
   --bar-minutes 1 --horizons 5,10,20,30 \
   --output outputs/order_flow_factor_screen_1m.csv \
   --report reports/Order_Flow_Factor_Screen_1m.md
+
+python scripts/research_m5_order_flow_grid.py \
+  data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
+  data/derived/PAXGUSDT_order_flow_5m_2021_2025.csv \
+  --output outputs/m5_executable_factor_grid.csv \
+  --report reports/M5_Executable_Factor_Grid.md
+
+python scripts/research_order_flow_absorption.py \
+  data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
+  data/derived/PAXGUSDT_order_flow_5m_2021_2025.csv \
+  --factor volume_return_3_reversal --bar-minutes 5 --hold-bars 24 \
+  --side long --session-hours 0-23 \
+  --trades outputs/m5_volume_reversal_holdout_trades.csv \
+  --report reports/M5_Volume_Reversal_Holdout.md
 ```
 
 ## 最新公开数据回测
