@@ -29,6 +29,9 @@ $$Long(t)=T_{up}(t)\land r_k(t)\le q_L(t),\qquad Short(t)=T_{down}(t)\land r_k(t
 被拒绝；这正是研究门槛的预期作用。详见[价格型详细拒绝报告](reports/Price_Only_Live_Candidate_Research_Detailed.md)
 及其 [PDF](reports/Price_Only_Live_Candidate_Research_Detailed.pdf)。
 
+独立的[时段突破研究](reports/Session_Breakout_Candidate_Research.md)也在相同的
+价格型风险和退出标准下未通过训练；它作为负面证据保留，并非 EA 候选。
+
 此前通过的成交量代理候选仅为研究留档，不能视为实盘建议。
 
 ## 功能

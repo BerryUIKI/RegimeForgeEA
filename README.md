@@ -37,6 +37,10 @@ of the research gate. See the
 [detailed price-only rejection report](reports/Price_Only_Live_Candidate_Research_Detailed.md)
 and [PDF](reports/Price_Only_Live_Candidate_Research_Detailed.pdf).
 
+A separate [session-breakout study](reports/Session_Breakout_Candidate_Research.md)
+also failed training under the same price-only risk and exit standards; it is
+retained as negative evidence, not an EA candidate.
+
 The legacy volume-confirmed proxy candidate remains documented for research
 traceability only and must not be treated as a live-trading recommendation.
 
