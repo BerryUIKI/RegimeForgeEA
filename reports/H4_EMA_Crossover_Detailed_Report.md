@@ -73,11 +73,11 @@ bar and makes the signal/execution boundary explicit.
 For entry price $E$ and signal-bar ATR(14) $A$:
 
 $$
-SL_{long}=E-2.5A,quad TP_{long}=E+4.0A
+SL_{long}=E-2.5A,\quad TP_{long}=E+4.0A
 $$
 
 $$
-SL_{short}=E+2.5A,quad TP_{short}=E-4.0A
+SL_{short}=E+2.5A,\quad TP_{short}=E-4.0A
 $$
 
 The trailing stop distance is $2.5A$. A position is also closed at the end of

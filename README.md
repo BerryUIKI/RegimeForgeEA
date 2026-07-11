@@ -3,11 +3,11 @@
 [![Python tests](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml/badge.svg)](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![MQL5](https://img.shields.io/badge/Execution-MQL5-167AC6)
-![Research status](https://img.shields.io/badge/Broker--test%20candidate-H4%20EMA%20crossover-0A8F72)
+![Research status](https://img.shields.io/badge/Deployment%20status-Not%20qualified-BA3D3D)
 
 RegimeForgeEA is a modular, regime-aware algorithmic trading framework with an
 MQL5 Expert Advisor and a Python research backtester. It is instrument-agnostic:
-the current broker-test candidate is an XAUUSD H4 EMA crossover,
+the latest audited candidate is an XAUUSD H4 EMA crossover research rule,
 but the execution and risk architecture does not depend on gold.
 
 Chinese documentation: [README_zh-CN.md](README_zh-CN.md)
@@ -21,12 +21,13 @@ Chinese documentation: [README_zh-CN.md](README_zh-CN.md)
 
 Volume-dependent candidates are not eligible for the live-trading research path
 because gold volume is inconsistent across venues and brokers. The completed
-price-only H4 EMA(20)/EMA(50) crossover candidate passed the fixed public-proxy
-training, validation, and holdout screening gates, with symmetric long/short
-signals, ATR protective orders, trailing stops, time exits, risk sizing, and
-account-level locks. It is qualified only for **broker-native MT5 testing**;
-it is not live-trading approval and its 24-trade validation and 8-trade holdout
-samples are too small to support a profitability claim.
+price-only H4 EMA(20)/EMA(50) crossover candidate passed the original fixed
+public-proxy screening gates, with symmetric long/short signals, ATR protective
+orders, trailing stops, time exits, risk sizing, and account-level locks. A
+stricter robustness audit found that it is **not high quality for deployment**:
+independent samples are small, short-only validation is negative, and adverse
+fixed-cost scenarios remove its validation edge. It remains disabled research
+code, not a broker-test approval.
 
 The H4 signal is evaluated only on completed bars:
 
@@ -37,7 +38,9 @@ $$Short_t=(EMA20_t<EMA50_t)\land(EMA20_{t-1}\ge EMA50_{t-1})$$
 Read the [detailed H4 EMA crossover report](reports/H4_EMA_Crossover_Detailed_Report.md)
 and its [PDF](reports/H4_EMA_Crossover_Detailed_Report.pdf). The MT5 source is
 [RegimeForgeMACrossoverEA.mq5](Experts/RegimeForgeMACrossoverEA.mq5); new
-entries are disabled by default.
+entries are disabled by default. The independent
+[quality audit](reports/H4_EMA_Crossover_Quality_Audit.md) records the
+non-deployment decision.
 
 The rejected price-only family used the completed-bar formula:
 
@@ -73,8 +76,8 @@ traceability only and must not be treated as a live-trading recommendation.
 - Python event backtester aligned with the EA's first strategy
 - Research-only Bollinger/RSI range model for candidate evaluation
 
-The H4 EMA crossover EA is the current broker-test implementation. New entries
-are disabled by default (`InpEnableNewEntries=false`), including in the new EA.
+The H4 EMA crossover EA is a disabled research implementation. New entries are
+disabled by default (`InpEnableNewEntries=false`), including in the new EA.
 The older trend and volume EAs are retained as research history, not deployment
 recommendations.
 
@@ -85,14 +88,17 @@ Multiple pre-defined strategy families were tested with 2021–2023 training,
 only previously passing proxy candidate depended on volume and is excluded from
 the live-trading path. The current price-only study also rejected all candidates
 at training. A separate H4 EMA crossover family selected MA05 before the final
-holdout and passed all proxy gates, but remains disabled until it passes
-broker-native XAUUSD bid/ask testing.
+holdout and passed the initial proxy gates, but failed the subsequent quality
+audit. It remains disabled and is not approved for broker-native activation.
 
 - [Detailed H4 EMA crossover report](reports/H4_EMA_Crossover_Detailed_Report.md):
   selected MA05 H4 EMA 20/50 candidate; 3.79% training return / 1.46 PF,
   0.60% validation return / 1.18 PF, and 0.40% holdout return / 1.29 PF under
-  the documented public-proxy cost model. Low independent sample counts require
-  further validation.
+  the documented public-proxy cost model.
+- [Quality audit](reports/H4_EMA_Crossover_Quality_Audit.md) and
+  [PDF](reports/H4_EMA_Crossover_Quality_Audit.pdf): non-deployment decision
+  based on insufficient independent trade count, negative short-only validation,
+  and loss of validation profitability under adverse fixed-cost scenarios.
 
 - [Trend candidate research](reports/Trend_Candidate_Research.md): eight
   M15/M30/H1 EMA/ADX/Donchian candidates; all failed training gates.

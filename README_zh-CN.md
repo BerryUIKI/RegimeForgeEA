@@ -3,10 +3,10 @@
 [![Python tests](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml/badge.svg)](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![MQL5](https://img.shields.io/badge/Execution-MQL5-167AC6)
-![研究状态](https://img.shields.io/badge/Broker--test%20candidate-H4%20EMA%20crossover-0A8F72)
+![研究状态](https://img.shields.io/badge/Deployment%20status-Not%20qualified-BA3D3D)
 
 RegimeForgeEA 是一个模块化、按行情状态切换策略的自动交易框架，包含 MQL5 EA
-和 Python 研究回测器。项目不绑定任何交易品种：当前经纪商测试候选为 XAUUSD
+和 Python 研究回测器。项目不绑定任何交易品种：最新审计的研究规则为 XAUUSD
 H4 EMA 交叉策略，但执行和风险架构本身与黄金无关。
 
 > [!WARNING]
@@ -18,9 +18,9 @@ H4 EMA 交叉策略，但执行和风险架构本身与黄金无关。
 成交量依赖型候选不再适用于实盘研究路径，因为不同黄金交易场所与经纪商的成交量口径
 并不一致。第一轮价格型 M5 多空研究已包含 ATR 止损、止盈、移动止损、时间退出、
 风险仓位和账户级锁；所有预先定义候选均在训练期失败。独立的 H4 EMA(20)/EMA(50)
-多空交叉候选通过了公开代理数据的训练、验证和留出检验，但只适用于下一步的
-经纪商原生 MT5 测试，不构成实盘批准或盈利承诺；2024 验证仅 24 笔、2025 留出仅
-8 笔，独立样本仍然很小。
+多空交叉候选通过了公开代理数据的初步训练、验证和留出检验；但更严格的稳健性审计
+发现其不具备部署所需的高质量：独立样本小、仅做空在验证期为负，且不利固定成本情景
+会消除验证期优势。因此它保持为默认禁用的研究代码，不构成经纪商测试批准或盈利承诺。
 
 H4 信号只在收盘 K 线后计算：
 
@@ -29,7 +29,8 @@ $$Long_t=(EMA20_t>EMA50_t)\land(EMA20_{t-1}\le EMA50_{t-1})$$
 $$Short_t=(EMA20_t<EMA50_t)\land(EMA20_{t-1}\ge EMA50_{t-1})$$
 
 详见英文[H4 EMA 交叉详细报告](reports/H4_EMA_Crossover_Detailed_Report.md)
-及其 [PDF](reports/H4_EMA_Crossover_Detailed_Report.pdf)。对应 MT5 源码为
+及其 [PDF](reports/H4_EMA_Crossover_Detailed_Report.pdf)。独立
+[质量审计](reports/H4_EMA_Crossover_Quality_Audit.md)记录了不部署结论。对应 MT5 源码为
 [RegimeForgeMACrossoverEA.mq5](Experts/RegimeForgeMACrossoverEA.mq5)，默认禁止新开仓。
 
 被拒绝的价格型家族使用如下已收盘 K 线公式：
@@ -62,7 +63,7 @@ $$Long(t)=T_{up}(t)\land r_k(t)\le q_L(t),\qquad Short(t)=T_{down}(t)\land r_k(t
 - 与第一套 EA 策略对齐的 Python 事件回测器
 - 用于候选评估、仅限研究的 Bollinger/RSI 震荡模型
 
-H4 EMA 交叉 EA 是当前经纪商测试实现。它仍默认禁止新开仓
+H4 EMA 交叉 EA 是默认禁用的研究实现。它仍默认禁止新开仓
 （`InpEnableNewEntries=false`）；旧趋势与成交量 EA 作为研究历史保留，不能视为部署建议。
 
 ## 研究状态
@@ -70,11 +71,14 @@ H4 EMA 交叉 EA 是当前经纪商测试实现。它仍默认禁止新开仓
 已使用预先固定的候选与时间切分进行测试：2021–2023 训练、2024 验证、2025 最终
 留出。大多数候选已淘汰；此前通过的代理候选依赖成交量，已排除在实盘路径之外。当前
 价格型候选也在训练期淘汰。独立 H4 EMA 交叉家族的 MA05 在最终留出前完成选择并
-通过代理数据门槛，但在通过经纪商原生 XAUUSD Bid/Ask 测试前仍保持默认禁用。
+通过初步代理数据门槛，但随后未通过质量审计；它保持默认禁用，未获准进入经纪商测试激活。
 
 - [H4 EMA 交叉详细报告](reports/H4_EMA_Crossover_Detailed_Report.md)：MA05 H4
   EMA 20/50 候选；在已记录公开代理成本模型下，训练期回报 3.79% / PF 1.46，
-  验证期回报 0.60% / PF 1.18，留出期回报 0.40% / PF 1.29。独立样本较小，仍需验证。
+  验证期回报 0.60% / PF 1.18，留出期回报 0.40% / PF 1.29。
+- [质量审计](reports/H4_EMA_Crossover_Quality_Audit.md)及其
+  [PDF](reports/H4_EMA_Crossover_Quality_Audit.pdf)：因独立交易数量不足、仅做空验证为负
+  以及不利固定成本下验证期转负，作出不部署决定。
 
 - [趋势候选研究](reports/Trend_Candidate_Research.md)：8 个 M15/M30/H1
   EMA/ADX/Donchian 候选，均未通过训练门槛。
