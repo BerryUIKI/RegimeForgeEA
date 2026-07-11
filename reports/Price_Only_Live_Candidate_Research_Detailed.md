@@ -154,6 +154,25 @@ have enough edge to pay for stops, targets, spread, and realistic risk control.
 Adding it to the EA would create the appearance of a live-ready strategy while
 contradicting the evidence.
 
+## 9.1 Subsequent independent price-only families
+
+Three follow-on families were specified before their individual training runs and
+used the same live-style bid/ask accounting, ATR protective exits, long/short
+symmetry, 0.25% or 0.50% equity risk sizing, daily-loss lock, and peak-drawdown
+lock. Neither was allowed to access validation or holdout data after failing
+training.
+
+| Family | Best training candidate | Trades | Return | Maximum drawdown | PF | Decision |
+|---|---|---:|---:|---:|---:|---|
+| Session opening-range breakout | New York 30-minute range, 2/3 ATR | 589 | -8.34% | 11.92% | 0.84 | Rejected |
+| ATR-compression breakout | H1 compression 0.65, 18-bar breakout | 55 | -2.52% | 3.01% | 0.64 | Rejected |
+| H4/D1 swing trend breakout | H4 EMA50/100, ADX20, 12-bar breakout | 73 | 0.65% | 4.08% | 1.06 | Rejected |
+
+The D1 candidate with the highest PF recorded only seven training trades. It is
+not evidence of an edge and was correctly excluded by the minimum-trade gate.
+The H4 candidate with 73 trades is closer, but PF 1.06 remains below the 1.10
+gate and is not eligible for validation.
+
 # 10. Implications for the MQL5 EA
 
 The existing volume-based EA must not be described as compliant with this new
@@ -172,15 +191,15 @@ The safe operational state is:
 
 # 11. Next research directions
 
-The next candidate family should not be another small variation of the same
-return-quantile rule. More defensible price-only directions include:
+The next candidate family should not be another small variation of the tested
+return-reversal, session-breakout, or compression-breakout rules. More
+defensible price-only directions include:
 
-1. Session-aware opening-range breakout with ATR stop/target and both sides.
-2. Multi-timeframe trend continuation after volatility compression, without
-   volume confirmation.
-3. Price-action mean reversion only in statistically identified range regimes.
-4. Separate long and short strategy families, each with independent evidence,
+1. Price-action mean reversion only in statistically identified range regimes.
+2. Separate long and short strategy families, each with independent evidence,
    rather than forcing symmetry where market microstructure is asymmetric.
+3. Cross-market or macro features only when their timestamps and economic
+   availability can be audited without look-ahead.
 
 Each family must be pre-defined, tested with protective exits, and subjected to
 the same train/validation/holdout gate before implementation.
@@ -196,11 +215,26 @@ python scripts/research_price_only_live_candidates.py \
 python scripts/generate_price_only_research_charts.py \
   outputs/price_only_live_candidates.json \
   --assets reports/assets
+
+python scripts/research_session_breakout_candidates.py \
+  data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
+  --output-json outputs/session_breakout_candidates.json \
+  --report reports/Session_Breakout_Candidate_Research.md
+
+python scripts/research_compression_breakout_candidates.py \
+  data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
+  --output-json outputs/compression_breakout_candidates.json \
+  --report reports/Compression_Breakout_Candidate_Research.md
+
+python scripts/research_swing_trend_candidates.py \
+  data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
+  --output-json outputs/swing_trend_candidates.json \
+  --report reports/Swing_Trend_Candidate_Research.md
 ```
 
 # 13. Final decision
 
-No price-only candidate in this study is approved for MQL5 integration,
-validation, or holdout testing. This preserves the live-trading research
-standard: a rejected strategy remains rejected, even when the requested design
-features are present.
+No price-only candidate in the four completed families is approved for MQL5
+integration, validation, or holdout testing. This preserves the live-trading
+research standard: a rejected strategy remains rejected, even when the
+requested design features are present.
