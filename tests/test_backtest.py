@@ -133,6 +133,31 @@ class BacktestTests(unittest.TestCase):
         row["previous_reversal_return"] = -0.004
         self.assertEqual(BACKTEST.signal_for_bar(row, config), 1)
 
+    def test_price_reversal_uses_completed_higher_timeframe_direction(self) -> None:
+        config = BACKTEST.Config(
+            strategy="price_reversal",
+            higher_timeframe="1h",
+            take_profit_atr=2.0,
+        )
+        row = pd.Series(
+            {
+                "higher_fast_ma": 110.0,
+                "higher_slow_ma": 100.0,
+                "reversal_return": -0.01,
+                "reversal_lower": -0.005,
+                "reversal_upper": 0.005,
+                "previous_reversal_return": -0.003,
+                "previous_reversal_lower": -0.006,
+                "previous_reversal_upper": 0.006,
+            }
+        )
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 1)
+        row["higher_fast_ma"] = 90.0
+        row["higher_slow_ma"] = 100.0
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 0)
+        row["reversal_return"] = 0.01
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), -1)
+
 
 def math_is_finite(value: float) -> bool:
     return bool(np.isfinite(value))

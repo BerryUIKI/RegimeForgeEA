@@ -67,7 +67,7 @@ class Config:
             raise ValueError("spread parameters must be non-negative")
         if self.fast_ma_period >= self.slow_ma_period:
             raise ValueError("fast_ma_period must be below slow_ma_period")
-        if self.strategy not in {"trend_breakout", "range_mean_reversion", "trend_pullback", "volume_reversal"}:
+        if self.strategy not in {"trend_breakout", "range_mean_reversion", "trend_pullback", "volume_reversal", "price_reversal"}:
             raise ValueError("unsupported strategy")
         if min(
             self.fast_ma_period,
@@ -110,8 +110,8 @@ class Config:
             raise ValueError("take_profit_atr must be non-negative")
         if self.strategy != "volume_reversal" and self.take_profit_atr <= 0:
             raise ValueError("take_profit_atr must be positive for non-time-exit strategies")
-        if self.strategy == "trend_pullback" and not self.higher_timeframe:
-            raise ValueError("trend_pullback requires higher_timeframe")
+        if self.strategy in {"trend_pullback", "price_reversal"} and not self.higher_timeframe:
+            raise ValueError("trend_pullback and price_reversal require higher_timeframe")
         if self.higher_fast_ma_period >= self.higher_slow_ma_period:
             raise ValueError("higher_fast_ma_period must be below higher_slow_ma_period")
 
@@ -378,6 +378,31 @@ def signal_for_bar(row: pd.Series, config: Config) -> int:
             config.allow_short
             and row["reversal_return"] >= row["reversal_upper"]
             and row["reversal_volume_ratio"] >= config.reversal_volume_ratio
+            and crosses_upper
+        ):
+            return -1
+    if config.strategy == "price_reversal":
+        if pd.isna(row["higher_fast_ma"]) or pd.isna(row["higher_slow_ma"]):
+            return 0
+        crosses_lower = (
+            not config.reversal_require_cross
+            or row["previous_reversal_return"] > row["previous_reversal_lower"]
+        )
+        crosses_upper = (
+            not config.reversal_require_cross
+            or row["previous_reversal_return"] < row["previous_reversal_upper"]
+        )
+        if (
+            config.allow_long
+            and row["higher_fast_ma"] > row["higher_slow_ma"]
+            and row["reversal_return"] <= row["reversal_lower"]
+            and crosses_lower
+        ):
+            return 1
+        if (
+            config.allow_short
+            and row["higher_fast_ma"] < row["higher_slow_ma"]
+            and row["reversal_return"] >= row["reversal_upper"]
             and crosses_upper
         ):
             return -1

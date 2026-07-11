@@ -3,7 +3,7 @@
 [![Python tests](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml/badge.svg)](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![MQL5](https://img.shields.io/badge/Execution-MQL5-167AC6)
-![研究状态](https://img.shields.io/badge/M5%20candidate-代理数据验证通过-0A8F72)
+![研究状态](https://img.shields.io/badge/Live%20candidate-Not%20yet%20qualified-BA3D3D)
 
 RegimeForgeEA 是一个模块化、按行情状态切换策略的自动交易框架，包含 MQL5 EA
 和 Python 研究回测器。项目不绑定任何交易品种：当前附带的第一套策略是 XAUUSD
@@ -13,22 +13,23 @@ M5 趋势突破研究候选，但执行和风险架构本身与黄金无关。
 > 本软件仅用于研究与教育。交易具有重大风险。启用真实交易前，必须验证品种合约、
 > 交易成本及策略行为。
 
-## 当前研究候选：M5 成交量确认反转
+## 实盘研究状态
 
-当前候选是仅做多的 M5 反转规则。它在公开黄金挂钩代理数据的固定训练、验证和留出
-流程中通过，但在任何部署前仍需经纪商原生 XAUUSD Bid/Ask 测试。
+成交量依赖型候选不再适用于实盘研究路径，因为不同黄金交易场所与经纪商的成交量口径
+并不一致。第一轮价格型 M5 多空研究已包含 ATR 止损、止盈、移动止损、时间退出、
+风险仓位和账户级锁；所有预先定义候选均在训练期失败。当前没有合格的实盘候选。
 
-$$r_3(t)=\frac{C_t}{C_{t-3}}-1$$
+被拒绝的价格型家族使用如下已收盘 K 线公式：
 
-$$q_{20}(t)=Q_{0.20}(\{r_3(s):s<t\}),\qquad VR(t)=\frac{V_t}{SMA_{60}(V)_t}$$
+$$r_k(t)=\frac{C_t}{C_{t-k}}-1$$
 
-当以下条件成立时，于下一根 M5 开盘做多：
+$$Long(t)=T_{up}(t)\land r_k(t)\le q_L(t),\qquad Short(t)=T_{down}(t)\land r_k(t)\ge q_U(t)$$
 
-$$r_3(t)\le q_{20}(t)\quad\land\quad VR(t)\ge1.5$$
+其中 $T_{up}$ 与 $T_{down}$ 是已完成 H1 的 EMA 趋势状态。它在实盘风格订单级测试中
+被拒绝；这正是研究门槛的预期作用。详见[价格型详细拒绝报告](reports/Price_Only_Live_Candidate_Research_Detailed.md)
+及其 [PDF](reports/Price_Only_Live_Candidate_Research_Detailed.pdf)。
 
-持有 24 根 M5（120 分钟）后平仓。阈值使用此前 5,760 根 M5，并向后移一根以避免
-未来函数。详见[完整 Markdown 报告](reports/M5_Volume_Reversal_Research_Report.md)
-和 [PDF 报告](reports/M5_Volume_Reversal_Research_Report.pdf)。
+此前通过的成交量代理候选仅为研究留档，不能视为实盘建议。
 
 ## 功能
 
@@ -47,8 +48,8 @@ $$r_3(t)\le q_{20}(t)\quad\land\quad VR(t)\ge1.5$$
 ## 研究状态
 
 已使用预先固定的候选与时间切分进行测试：2021–2023 训练、2024 验证、2025 最终
-留出。大多数候选已淘汰；一个 M5 成交量确认反转候选在公开 PAXGUSDT 代理的三段
-样本中通过，但这不代表实盘盈利，且默认不会启用。
+留出。大多数候选已淘汰；此前通过的代理候选依赖成交量，已排除在实盘路径之外。当前
+价格型候选也在训练期淘汰，因此没有任何价格型规则默认启用。
 
 - [趋势候选研究](reports/Trend_Candidate_Research.md)：8 个 M15/M30/H1
   EMA/ADX/Donchian 候选，均未通过训练门槛。
@@ -168,6 +169,8 @@ M5。其代理数据[自适应回测](reports/M5_Adaptive_Volume_Reversal_Backte
 详细的[自适应研究论文](reports/M5_Adaptive_Volume_Reversal_Research_Paper.md)及其
 [PDF](reports/M5_Adaptive_Volume_Reversal_Research_Paper.pdf)记录了选型限制、
 风险分析和专业测试流程。
+完整的英文审计级说明见[详细报告](reports/M5_Adaptive_Volume_Reversal_Detailed_Report.md)
+及其[详细 PDF](reports/M5_Adaptive_Volume_Reversal_Detailed_Report.pdf)。
 
 ## Python 回测
 

@@ -3,7 +3,7 @@
 [![Python tests](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml/badge.svg)](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![MQL5](https://img.shields.io/badge/Execution-MQL5-167AC6)
-![Research status](https://img.shields.io/badge/M5%20candidate-Proxy%20validated-0A8F72)
+![Research status](https://img.shields.io/badge/Live%20candidate-Not%20yet%20qualified-BA3D3D)
 
 RegimeForgeEA is a modular, regime-aware algorithmic trading framework with an
 MQL5 Expert Advisor and a Python research backtester. It is instrument-agnostic:
@@ -17,24 +17,28 @@ Chinese documentation: [README_zh-CN.md](README_zh-CN.md)
 > substantial risk. Validate symbol specifications, costs, and strategy
 > behavior before enabling live trading.
 
-## Current research candidate: M5 volume-confirmed reversal
+## Live-trading research status
 
-The current research candidate is a long-only M5 reversal rule. It passed the
-fixed training, validation, and holdout protocol on a public gold-linked proxy;
-it still requires broker-native XAUUSD Bid/Ask testing before any deployment.
+Volume-dependent candidates are not eligible for the live-trading research path
+because gold volume is inconsistent across venues and brokers. The first
+price-only M5 long/short study included ATR stop loss, take profit, trailing
+stops, time exits, risk sizing, and account-level locks; all pre-defined
+candidates failed training. No live candidate is currently qualified.
 
-$$r_3(t)=\frac{C_t}{C_{t-3}}-1$$
+The rejected price-only family used the completed-bar formula:
 
-$$q_{20}(t)=Q_{0.20}(\{r_3(s):s<t\}),\qquad VR(t)=\frac{V_t}{SMA_{60}(V)_t}$$
+$$r_k(t)=\frac{C_t}{C_{t-k}}-1$$
 
-Enter long at the next M5 open when:
+$$Long(t)=T_{up}(t)\land r_k(t)\le q_L(t),\qquad Short(t)=T_{down}(t)\land r_k(t)\ge q_U(t)$$
 
-$$r_3(t)\le q_{20}(t)\quad\land\quad VR(t)\ge1.5$$
+where $T_{up}$ and $T_{down}$ are completed-H1 EMA trend states. It was
+rejected after the live-style order-level test, which is the intended outcome
+of the research gate. See the
+[detailed price-only rejection report](reports/Price_Only_Live_Candidate_Research_Detailed.md)
+and [PDF](reports/Price_Only_Live_Candidate_Research_Detailed.pdf).
 
-Exit after 24 M5 bars (120 minutes). The threshold uses the prior 5,760 M5
-bars and is shifted one bar to avoid look-ahead. See the
-[full Markdown report](reports/M5_Volume_Reversal_Research_Report.md) and
-[PDF report](reports/M5_Volume_Reversal_Research_Report.pdf).
+The legacy volume-confirmed proxy candidate remains documented for research
+traceability only and must not be treated as a live-trading recommendation.
 
 ## Features
 
@@ -55,9 +59,10 @@ high-volatility regimes remain inactive in the EA.
 ## Research status
 
 Multiple pre-defined strategy families were tested with 2021–2023 training,
-2024 validation, and a 2025 final holdout. Most candidates were rejected. One
-M5 volume-confirmed reversal candidate passed all three splits on the public
-PAXGUSDT proxy; it is not a live-profit claim and is not enabled by default.
+2024 validation, and a 2025 final holdout. Most candidates were rejected. The
+only previously passing proxy candidate depended on volume and is excluded from
+the live-trading path. The current price-only study also rejected all candidates
+at training, so no price-only rule is enabled by default.
 
 - [Trend candidate research](reports/Trend_Candidate_Research.md): eight
   M15/M30/H1 EMA/ADX/Donchian candidates; all failed training gates.
@@ -190,6 +195,9 @@ historical sample; validate this profile independently in MT5. The detailed
 [adaptive research paper](reports/M5_Adaptive_Volume_Reversal_Research_Paper.md)
 and [PDF](reports/M5_Adaptive_Volume_Reversal_Research_Paper.pdf) document the
 selection caveat, risk analysis, and professional-test protocol.
+For a full audit-style treatment, see the
+[detailed report](reports/M5_Adaptive_Volume_Reversal_Detailed_Report.md) and
+[detailed PDF](reports/M5_Adaptive_Volume_Reversal_Detailed_Report.pdf).
 
 ## Python backtest
 
