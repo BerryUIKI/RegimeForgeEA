@@ -182,6 +182,23 @@ class BacktestTests(unittest.TestCase):
         row["close"] = 89.0
         self.assertEqual(BACKTEST.signal_for_bar(row, config), -1)
 
+    def test_ma_crossover_requires_an_actual_cross(self) -> None:
+        config = BACKTEST.Config(strategy="ma_crossover", take_profit_atr=2.0)
+        row = pd.Series(
+            {
+                "fast_ma": 101.0,
+                "slow_ma": 100.0,
+                "previous_fast_ma": 99.0,
+                "previous_slow_ma": 100.0,
+            }
+        )
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 1)
+        row["previous_fast_ma"] = 101.0
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 0)
+        row["fast_ma"] = 99.0
+        row["previous_fast_ma"] = 101.0
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), -1)
+
 
 def math_is_finite(value: float) -> bool:
     return bool(np.isfinite(value))

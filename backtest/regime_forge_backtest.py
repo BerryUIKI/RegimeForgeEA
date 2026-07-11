@@ -68,7 +68,7 @@ class Config:
             raise ValueError("spread parameters must be non-negative")
         if self.fast_ma_period >= self.slow_ma_period:
             raise ValueError("fast_ma_period must be below slow_ma_period")
-        if self.strategy not in {"trend_breakout", "range_mean_reversion", "trend_pullback", "volume_reversal", "price_reversal", "compression_breakout"}:
+        if self.strategy not in {"trend_breakout", "range_mean_reversion", "trend_pullback", "volume_reversal", "price_reversal", "compression_breakout", "ma_crossover"}:
             raise ValueError("unsupported strategy")
         if min(
             self.fast_ma_period,
@@ -246,6 +246,8 @@ def add_indicators(frame: pd.DataFrame, config: Config) -> pd.DataFrame:
 
     result["fast_ma"] = ema(result["close"], config.fast_ma_period)
     result["slow_ma"] = ema(result["close"], config.slow_ma_period)
+    result["previous_fast_ma"] = result["fast_ma"].shift(1)
+    result["previous_slow_ma"] = result["slow_ma"].shift(1)
     result["atr"] = wilder_average(true_range, config.atr_period)
     result["atr_slow"] = wilder_average(true_range, config.atr_period * 4)
 
@@ -431,6 +433,19 @@ def signal_for_bar(row: pd.Series, config: Config) -> int:
             and compressed
             and row["higher_fast_ma"] < row["higher_slow_ma"]
             and row["close"] < row["prior_low"]
+        ):
+            return -1
+    if config.strategy == "ma_crossover":
+        if (
+            config.allow_long
+            and row["fast_ma"] > row["slow_ma"]
+            and row["previous_fast_ma"] <= row["previous_slow_ma"]
+        ):
+            return 1
+        if (
+            config.allow_short
+            and row["fast_ma"] < row["slow_ma"]
+            and row["previous_fast_ma"] >= row["previous_slow_ma"]
         ):
             return -1
     return 0

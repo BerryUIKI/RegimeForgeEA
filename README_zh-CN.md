@@ -3,11 +3,11 @@
 [![Python tests](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml/badge.svg)](https://github.com/BerryUIKI/RegimeForgeEA/actions/workflows/python-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![MQL5](https://img.shields.io/badge/Execution-MQL5-167AC6)
-![研究状态](https://img.shields.io/badge/Live%20candidate-Not%20yet%20qualified-BA3D3D)
+![研究状态](https://img.shields.io/badge/Broker--test%20candidate-H4%20EMA%20crossover-0A8F72)
 
 RegimeForgeEA 是一个模块化、按行情状态切换策略的自动交易框架，包含 MQL5 EA
-和 Python 研究回测器。项目不绑定任何交易品种：当前附带的第一套策略是 XAUUSD
-M5 趋势突破研究候选，但执行和风险架构本身与黄金无关。
+和 Python 研究回测器。项目不绑定任何交易品种：当前经纪商测试候选为 XAUUSD
+H4 EMA 交叉策略，但执行和风险架构本身与黄金无关。
 
 > [!WARNING]
 > 本软件仅用于研究与教育。交易具有重大风险。启用真实交易前，必须验证品种合约、
@@ -17,7 +17,20 @@ M5 趋势突破研究候选，但执行和风险架构本身与黄金无关。
 
 成交量依赖型候选不再适用于实盘研究路径，因为不同黄金交易场所与经纪商的成交量口径
 并不一致。第一轮价格型 M5 多空研究已包含 ATR 止损、止盈、移动止损、时间退出、
-风险仓位和账户级锁；所有预先定义候选均在训练期失败。当前没有合格的实盘候选。
+风险仓位和账户级锁；所有预先定义候选均在训练期失败。独立的 H4 EMA(20)/EMA(50)
+多空交叉候选通过了公开代理数据的训练、验证和留出检验，但只适用于下一步的
+经纪商原生 MT5 测试，不构成实盘批准或盈利承诺；2024 验证仅 24 笔、2025 留出仅
+8 笔，独立样本仍然很小。
+
+H4 信号只在收盘 K 线后计算：
+
+$$Long_t=(EMA20_t>EMA50_t)\land(EMA20_{t-1}\le EMA50_{t-1})$$
+
+$$Short_t=(EMA20_t<EMA50_t)\land(EMA20_{t-1}\ge EMA50_{t-1})$$
+
+详见英文[H4 EMA 交叉详细报告](reports/H4_EMA_Crossover_Detailed_Report.md)
+及其 [PDF](reports/H4_EMA_Crossover_Detailed_Report.pdf)。对应 MT5 源码为
+[RegimeForgeMACrossoverEA.mq5](Experts/RegimeForgeMACrossoverEA.mq5)，默认禁止新开仓。
 
 被拒绝的价格型家族使用如下已收盘 K 线公式：
 
@@ -49,14 +62,19 @@ $$Long(t)=T_{up}(t)\land r_k(t)\le q_L(t),\qquad Short(t)=T_{down}(t)\land r_k(t
 - 与第一套 EA 策略对齐的 Python 事件回测器
 - 用于候选评估、仅限研究的 Bollinger/RSI 震荡模型
 
-当前 EA 只管理趋势突破研究候选。由于公开数据研究尚未发现可部署的策略，默认
-禁止新开仓（`InpEnableNewEntries=false`）。EA 中震荡与高波动行情仍然保持空仓。
+H4 EMA 交叉 EA 是当前经纪商测试实现。它仍默认禁止新开仓
+（`InpEnableNewEntries=false`）；旧趋势与成交量 EA 作为研究历史保留，不能视为部署建议。
 
 ## 研究状态
 
 已使用预先固定的候选与时间切分进行测试：2021–2023 训练、2024 验证、2025 最终
 留出。大多数候选已淘汰；此前通过的代理候选依赖成交量，已排除在实盘路径之外。当前
-价格型候选也在训练期淘汰，因此没有任何价格型规则默认启用。
+价格型候选也在训练期淘汰。独立 H4 EMA 交叉家族的 MA05 在最终留出前完成选择并
+通过代理数据门槛，但在通过经纪商原生 XAUUSD Bid/Ask 测试前仍保持默认禁用。
+
+- [H4 EMA 交叉详细报告](reports/H4_EMA_Crossover_Detailed_Report.md)：MA05 H4
+  EMA 20/50 候选；在已记录公开代理成本模型下，训练期回报 3.79% / PF 1.46，
+  验证期回报 0.60% / PF 1.18，留出期回报 0.40% / PF 1.29。独立样本较小，仍需验证。
 
 - [趋势候选研究](reports/Trend_Candidate_Research.md)：8 个 M15/M30/H1
   EMA/ADX/Donchian 候选，均未通过训练门槛。
@@ -97,6 +115,11 @@ python scripts/research_range_candidates.py \
   data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
   --output-json outputs/range_candidate_research.json \
   --report reports/Range_Candidate_Research.md
+
+python scripts/research_ma_crossover_candidates.py \
+  data/derived/PAXGUSDT_5m_2021_2025_weekdays.csv \
+  --output-json outputs/ma_crossover_candidates.json \
+  --report reports/MA_Crossover_Candidate_Research.md
 
 python scripts/download_binance_aggtrades.py \
   --symbol PAXGUSDT --start 2021-01 --end 2025-12 \
@@ -151,6 +174,7 @@ XAUUSD 报价，因此不能把结果描述为实盘验证。
 ```text
 MQL5/
 ├── Experts/RegimeForgeEA.mq5
+├── Experts/RegimeForgeMACrossoverEA.mq5
 ├── Experts/RegimeForgeVolumeReversalEA.mq5
 └── Include/RegimeForge/
     ├── StrategyTypes.mqh
