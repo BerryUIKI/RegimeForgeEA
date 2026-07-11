@@ -42,6 +42,7 @@ class Config:
     adx_period: int = 14
     adx_trend_level: float = 20.0
     high_volatility_atr_ratio: float = 1.8
+    compression_max_atr_ratio: float = 0.8
     breakout_bars: int = 18
     stop_atr: float = 1.6
     take_profit_atr: float = 3.0
@@ -67,7 +68,7 @@ class Config:
             raise ValueError("spread parameters must be non-negative")
         if self.fast_ma_period >= self.slow_ma_period:
             raise ValueError("fast_ma_period must be below slow_ma_period")
-        if self.strategy not in {"trend_breakout", "range_mean_reversion", "trend_pullback", "volume_reversal", "price_reversal"}:
+        if self.strategy not in {"trend_breakout", "range_mean_reversion", "trend_pullback", "volume_reversal", "price_reversal", "compression_breakout"}:
             raise ValueError("unsupported strategy")
         if min(
             self.fast_ma_period,
@@ -110,10 +111,12 @@ class Config:
             raise ValueError("take_profit_atr must be non-negative")
         if self.strategy != "volume_reversal" and self.take_profit_atr <= 0:
             raise ValueError("take_profit_atr must be positive for non-time-exit strategies")
-        if self.strategy in {"trend_pullback", "price_reversal"} and not self.higher_timeframe:
-            raise ValueError("trend_pullback and price_reversal require higher_timeframe")
+        if self.strategy in {"trend_pullback", "price_reversal", "compression_breakout"} and not self.higher_timeframe:
+            raise ValueError("trend_pullback, price_reversal, and compression_breakout require higher_timeframe")
         if self.higher_fast_ma_period >= self.higher_slow_ma_period:
             raise ValueError("higher_fast_ma_period must be below higher_slow_ma_period")
+        if self.compression_max_atr_ratio <= 0:
+            raise ValueError("compression_max_atr_ratio must be positive")
 
 
 @dataclass
@@ -404,6 +407,30 @@ def signal_for_bar(row: pd.Series, config: Config) -> int:
             and row["higher_fast_ma"] < row["higher_slow_ma"]
             and row["reversal_return"] >= row["reversal_upper"]
             and crosses_upper
+        ):
+            return -1
+    if config.strategy == "compression_breakout":
+        if (
+            pd.isna(row["higher_fast_ma"])
+            or pd.isna(row["higher_slow_ma"])
+            or pd.isna(row["atr"])
+            or pd.isna(row["atr_slow"])
+            or row["atr_slow"] <= 0
+        ):
+            return 0
+        compressed = row["atr"] / row["atr_slow"] <= config.compression_max_atr_ratio
+        if (
+            config.allow_long
+            and compressed
+            and row["higher_fast_ma"] > row["higher_slow_ma"]
+            and row["close"] > row["prior_high"]
+        ):
+            return 1
+        if (
+            config.allow_short
+            and compressed
+            and row["higher_fast_ma"] < row["higher_slow_ma"]
+            and row["close"] < row["prior_low"]
         ):
             return -1
     return 0

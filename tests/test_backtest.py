@@ -158,6 +158,30 @@ class BacktestTests(unittest.TestCase):
         row["reversal_return"] = 0.01
         self.assertEqual(BACKTEST.signal_for_bar(row, config), -1)
 
+    def test_compression_breakout_supports_both_directions(self) -> None:
+        config = BACKTEST.Config(
+            strategy="compression_breakout",
+            higher_timeframe="1h",
+            take_profit_atr=2.0,
+            compression_max_atr_ratio=0.8,
+        )
+        row = pd.Series(
+            {
+                "higher_fast_ma": 110.0,
+                "higher_slow_ma": 100.0,
+                "atr": 0.6,
+                "atr_slow": 1.0,
+                "close": 101.0,
+                "prior_high": 100.0,
+                "prior_low": 90.0,
+            }
+        )
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 1)
+        row["higher_fast_ma"] = 90.0
+        row["higher_slow_ma"] = 100.0
+        row["close"] = 89.0
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), -1)
+
 
 def math_is_finite(value: float) -> bool:
     return bool(np.isfinite(value))

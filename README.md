@@ -41,6 +41,10 @@ A separate [session-breakout study](reports/Session_Breakout_Candidate_Research.
 also failed training under the same price-only risk and exit standards; it is
 retained as negative evidence, not an EA candidate.
 
+The independent [ATR-compression breakout study](reports/Compression_Breakout_Candidate_Research.md)
+also failed training. Three distinct price-only families therefore remain
+rejected under the current public proxy-data and live-style cost assumptions.
+
 The legacy volume-confirmed proxy candidate remains documented for research
 traceability only and must not be treated as a live-trading recommendation.
 
