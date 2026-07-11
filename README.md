@@ -91,6 +91,12 @@ at training. A separate H4 EMA crossover family selected MA05 before the final
 holdout and passed the initial proxy gates, but failed the subsequent quality
 audit. It remains disabled and is not approved for broker-native activation.
 
+The new M5 price-only breakout-reversal program also remains disabled. Its
+predefined eight-rule ATR-exit grid generated 2,539--5,616 training trades, but
+every rule failed the training gate (PF 0.96--1.05 and drawdown at the 20% lock).
+No 2024 validation or 2025 holdout was inspected. The MQL5 implementation is a
+diagnostic research EA only; it must not be activated from this evidence.
+
 - [Detailed H4 EMA crossover report](reports/H4_EMA_Crossover_Detailed_Report.md):
   selected MA05 H4 EMA 20/50 candidate; 3.79% training return / 1.46 PF,
   0.60% validation return / 1.18 PF, and 0.40% holdout return / 1.29 PF under
@@ -99,6 +105,9 @@ audit. It remains disabled and is not approved for broker-native activation.
   [PDF](reports/H4_EMA_Crossover_Quality_Audit.pdf): non-deployment decision
   based on insufficient independent trade count, negative short-only validation,
   and loss of validation profitability under adverse fixed-cost scenarios.
+- [M5 price-action breakout-reversal research](reports/M5_Price_Action_Breakout_Reversal.md):
+  price-only M5 long/short candidates with ATR exits; all rejected in training.
+  A [PDF](reports/M5_Price_Action_Breakout_Reversal.pdf) is included.
 
 - [Trend candidate research](reports/Trend_Candidate_Research.md): eight
   M15/M30/H1 EMA/ADX/Donchian candidates; all failed training gates.
@@ -206,6 +215,7 @@ Read the [full report](reports/PAXGUSDT_2021_2025.md) and inspect the
 MQL5/
 ├── Experts/RegimeForgeEA.mq5
 ├── Experts/RegimeForgeMACrossoverEA.mq5
+├── Experts/RegimeForgeM5BreakoutReversalEA.mq5
 ├── Experts/RegimeForgeVolumeReversalEA.mq5
 └── Include/RegimeForge/
     ├── StrategyTypes.mqh

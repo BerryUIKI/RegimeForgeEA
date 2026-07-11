@@ -199,6 +199,15 @@ class BacktestTests(unittest.TestCase):
         row["previous_fast_ma"] = 101.0
         self.assertEqual(BACKTEST.signal_for_bar(row, config), -1)
 
+    def test_breakout_reversal_supports_both_directions(self) -> None:
+        config = BACKTEST.Config(
+            strategy="breakout_reversal", breakout_bars=12, take_profit_atr=2.0
+        )
+        row = pd.Series({"close": 99.0, "prior_low": 100.0, "prior_high": 110.0})
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), 1)
+        row["close"] = 111.0
+        self.assertEqual(BACKTEST.signal_for_bar(row, config), -1)
+
 
 def math_is_finite(value: float) -> bool:
     return bool(np.isfinite(value))

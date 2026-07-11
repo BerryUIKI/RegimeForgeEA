@@ -68,7 +68,7 @@ class Config:
             raise ValueError("spread parameters must be non-negative")
         if self.fast_ma_period >= self.slow_ma_period:
             raise ValueError("fast_ma_period must be below slow_ma_period")
-        if self.strategy not in {"trend_breakout", "range_mean_reversion", "trend_pullback", "volume_reversal", "price_reversal", "compression_breakout", "ma_crossover"}:
+        if self.strategy not in {"trend_breakout", "range_mean_reversion", "trend_pullback", "volume_reversal", "price_reversal", "compression_breakout", "ma_crossover", "breakout_reversal"}:
             raise ValueError("unsupported strategy")
         if min(
             self.fast_ma_period,
@@ -447,6 +447,11 @@ def signal_for_bar(row: pd.Series, config: Config) -> int:
             and row["fast_ma"] < row["slow_ma"]
             and row["previous_fast_ma"] >= row["previous_slow_ma"]
         ):
+            return -1
+    if config.strategy == "breakout_reversal":
+        if config.allow_long and row["close"] < row["prior_low"]:
+            return 1
+        if config.allow_short and row["close"] > row["prior_high"]:
             return -1
     return 0
 

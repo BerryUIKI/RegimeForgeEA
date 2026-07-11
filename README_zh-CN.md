@@ -73,12 +73,18 @@ H4 EMA 交叉 EA 是默认禁用的研究实现。它仍默认禁止新开仓
 价格型候选也在训练期淘汰。独立 H4 EMA 交叉家族的 MA05 在最终留出前完成选择并
 通过初步代理数据门槛，但随后未通过质量审计；它保持默认禁用，未获准进入经纪商测试激活。
 
+新的 M5 纯价格突破反转程序同样保持禁用。其预先固定的 8 个 ATR 退出规则在训练期
+产生 2,539--5,616 笔交易，但全部未通过训练门槛（PF 为 0.96--1.05，回撤触及 20%
+锁定）。没有查看 2024 验证或 2025 留出；MQL5 实现仅作诊断研究，不能据此激活。
+
 - [H4 EMA 交叉详细报告](reports/H4_EMA_Crossover_Detailed_Report.md)：MA05 H4
   EMA 20/50 候选；在已记录公开代理成本模型下，训练期回报 3.79% / PF 1.46，
   验证期回报 0.60% / PF 1.18，留出期回报 0.40% / PF 1.29。
 - [质量审计](reports/H4_EMA_Crossover_Quality_Audit.md)及其
   [PDF](reports/H4_EMA_Crossover_Quality_Audit.pdf)：因独立交易数量不足、仅做空验证为负
   以及不利固定成本下验证期转负，作出不部署决定。
+- [M5 纯价格突破反转研究](reports/M5_Price_Action_Breakout_Reversal.md)：包含 ATR
+  退出的 M5 价格型多空候选；全部在训练期淘汰，并提供 [PDF](reports/M5_Price_Action_Breakout_Reversal.pdf)。
 
 - [趋势候选研究](reports/Trend_Candidate_Research.md)：8 个 M15/M30/H1
   EMA/ADX/Donchian 候选，均未通过训练门槛。
@@ -179,6 +185,7 @@ XAUUSD 报价，因此不能把结果描述为实盘验证。
 MQL5/
 ├── Experts/RegimeForgeEA.mq5
 ├── Experts/RegimeForgeMACrossoverEA.mq5
+├── Experts/RegimeForgeM5BreakoutReversalEA.mq5
 ├── Experts/RegimeForgeVolumeReversalEA.mq5
 └── Include/RegimeForge/
     ├── StrategyTypes.mqh
